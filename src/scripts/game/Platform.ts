@@ -46,7 +46,10 @@ export class Platform {
       (gridRect.y + gridRect.height / 2) * App.config.tileSize,
       gridRect.width * App.config.tileSize,
       gridRect.height * App.config.tileSize,
-      { isStatic: true, frictionStatic: 0 });
+      {
+        isStatic: true,
+        friction: 1,
+      });
     Matter.World.add(App.physics.world, this.body);
   }
 

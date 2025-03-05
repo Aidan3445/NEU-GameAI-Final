@@ -58,6 +58,10 @@ export class Player {
 
   jump() {
     if (this.canJump && !this.jumpCooldown) {
+      Matter.Body.setVelocity(this.body, {
+        x: this.body.velocity.x,
+        y: 0
+      });
       Matter.Body.applyForce(this.body, this.body.position, {
         x: 0,
         y: -App.config.playerJump
@@ -73,8 +77,6 @@ export class Player {
   land() {
     this.canJump = true;
     this.sprite.texture = App.sprite("player").texture;
-
-    Matter.Body.setAngularVelocity(this.body, 0);
   }
 
   update() {

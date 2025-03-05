@@ -70,13 +70,14 @@ export class GameScene extends Scene {
 
     Matter.Events.on(App.physics, 'collisionStart',
       (event: Matter.IEventCollision<Matter.Engine>) => {
-        const colliders = [event.pairs[0].bodyA, event.pairs[0].bodyB];
-        const player = colliders.find(body => body.id === this.player?.body.id);
-        const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
-
-        if (player && platform) {
-          this.player.land();
-        }
+        event.pairs.forEach((pair) => {
+          const colliders = [pair.bodyA, pair.bodyB];
+          const player = colliders.find(body => body.id === this.player?.body.id);
+          const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
+          if (player && platform && pair.collision.normal.y <= 0) {
+            this.player.land();
+          }
+        });
       });
   }
 
@@ -104,10 +105,14 @@ export class GameScene extends Scene {
         case "ArrowLeft":
         case "a":
           App.controllerInput.left = false;
+          this.player.move(0.1);
+          this.player.moving = false;
           break;
         case "ArrowRight":
         case "d":
           App.controllerInput.right = false;
+          this.player.move(-0.1);
+          this.player.moving = false;
           break;
         case "ArrowUp":
         case "w":
@@ -164,5 +169,5 @@ const level = [
   "P        SSS                  PP                           P",
   "P    PPPPPPPP         X       PPP                          P",
   "P                             PPPP                         P",
-  "PPPPPPPPPPPPPPP PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"
+  "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"
 ]
