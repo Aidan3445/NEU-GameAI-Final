@@ -9,6 +9,7 @@ export class Player {
   body!: Matter.Body;
   moving: boolean = false;
   canJump: boolean = false;
+  jumpCooldown: boolean = false;
 
   get velocity() {
     return this.body.velocity;
@@ -39,7 +40,8 @@ export class Player {
       this.sprite.width,
       this.sprite.height,
       {
-        restitution: 0.1,
+        mass: 50,
+        inertia: Infinity,
       });
 
     Matter.World.add(App.physics.world, this.body);
@@ -55,7 +57,7 @@ export class Player {
   }
 
   jump() {
-    if (this.canJump) {
+    if (this.canJump && !this.jumpCooldown) {
       Matter.Body.applyForce(this.body, this.body.position, {
         x: 0,
         y: -App.config.playerJump
@@ -63,34 +65,16 @@ export class Player {
       this.canJump = false;
       this.sprite.texture = App.res("playerJumping");
 
-      if (this.body.angularSpeed < 0.075)
-        Matter.Body.setAngularVelocity(this.body, 0.075 * Math.sign(this.body.velocity.x));
+      this.jumpCooldown = true;
+      setTimeout(() => this.jumpCooldown = false, 500);
     }
   }
 
   land() {
     this.canJump = true;
     this.sprite.texture = App.sprite("player").texture;
-  }
 
-  leftBound() {
-    return this.sprite.x + this.sprite.width / 2 > window.innerWidth * (0.5 + App.config.playerBoundPercentage * 0.5) &&
-      this.velocity.x > 0;
-  }
-
-  rightBound() {
-    return this.sprite.x < window.innerWidth * (0.5 - App.config.playerBoundPercentage * 0.5) &&
-      this.velocity.x < 0;
-  }
-
-  bottomBound() {
-    return this.sprite.y + this.sprite.height > window.innerHeight * (0.5 + App.config.playerBoundPercentage * 0.5) &&
-      this.velocity.y > 0;
-  }
-
-  topBound() {
-    return this.sprite.y < window.innerHeight * (0.5 - App.config.playerBoundPercentage * 0.5) &&
-      this.velocity.y < 0;
+    Matter.Body.setAngularVelocity(this.body, 0);
   }
 
   update() {

@@ -1,32 +1,41 @@
 import * as PIXI from 'pixi.js';
-import { Background } from "./Background";
 import { Scene } from '../system/Scene';
 import { App } from '../system/App';
 import { Player } from './Player';
 import { Platform } from './Platform';
 import Matter from 'matter-js';
+import { Camera } from './Camera';
+import { buildLevel } from '../system/LevelBuilder';
 
 export class GameScene extends Scene {
-  bg!: Background;
+  camera!: Camera;
   player!: Player;
   platforms!: Platform[];
 
   create() {
-    this.createBackground();
-    this.createPlayer();
-    this.createPlatforms(scenePlatforms);
+    const { playerStart, platforms, cameraBounds } = buildLevel(level);
+
+    this.createCamera(cameraBounds);
+
+    this.createPlayer(playerStart);
+    this.createPlatforms(platforms);
 
     this.physicsEvents();
     this.keyEvents();
   }
 
-  createBackground() {
-    this.bg = new Background();
-    this.container.addChild(this.bg.container);
+  createCamera(cameraBounds: PIXI.Point) {
+    this.camera = new Camera(
+      Camera.CenterFollow,
+      window.innerWidth,
+      window.innerHeight,
+      cameraBounds,
+      this.container
+    );
   }
 
-  createPlayer() {
-    this.player = new Player(new PIXI.Point(3, 5));
+  createPlayer(playerStart: PIXI.Point) {
+    this.player = new Player(playerStart);
     this.container.addChild(this.player.container);
   }
 
@@ -52,6 +61,10 @@ export class GameScene extends Scene {
             x: App.config.playerMaxSpeed * Math.sign(this.player.body.velocity.x),
             y: this.player.body.velocity.y
           });
+        }
+
+        if (this.player.body.angularSpeed > App.config.playerMaxAngularSpeed) {
+          Matter.Body.setAngularSpeed(this.player.body, App.config.playerMaxAngularSpeed * Math.sign(this.player.body.angularVelocity));
         }
       });
 
@@ -105,35 +118,51 @@ export class GameScene extends Scene {
     });
   }
 
-
   update(dt: PIXI.Ticker) {
     super.update(dt)
-    if (this.player) {
-      this.player.update();
 
-      if (this.player.velocity.x !== 0 || this.player.velocity.y !== 0) {
-        const vector = new PIXI.Point(0, 0);
+    this.camera.update(this.player.body);
+    this.camera.apply(this.player.body);
 
-        if (this.player.leftBound() || this.player.rightBound()) {
-          vector.x = this.player.velocity.x * dt.deltaTime;
-        }
-
-        if (this.player.topBound() || this.player.bottomBound()) {
-          vector.y = this.player.velocity.y * dt.deltaTime;
-        }
-
-        this.bg.move(vector);
-        this.platforms.forEach((platform) => {
-          platform.move(vector);
-          platform.update();
-        });
-      }
-    }
+    this.platforms.forEach((platform) => {
+      this.camera.apply(platform.body);
+      platform.update();
+    });
+    this.player.update();
   }
 }
 
-const scenePlatforms = [
-  new PIXI.Rectangle(1, 10, 9, 2),
-  new PIXI.Rectangle(10, 8, 4, 1),
-  new PIXI.Rectangle(15, 7, 16, 1),
-];
+const level = [
+  "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "P                                                          P",
+  "P                                                          P",
+  "P                                                          P",
+  "P             F                     PPPPPP       SS        P",
+  "P           PPPPPPP                            PPPPPPP     P",
+  "P   PPPP                 PPPPPPP                           P",
+  "P            SSS                                        PPPP",
+  "PPPP    PPPPPPPP                                           P",
+  "P                                                PPPP      P",
+  "P   PPPP                         PPPPPPP                   P",
+  "P                                                          P",
+  "P                   SSS                                 PPPP",
+  "P      PPPPPP       PPPPPPPPP                PPPPP         P",
+  "P                                PPPPPP                 PPPP",
+  "P                                                          P",
+  "P                                       P                  P",
+  "PPPP        PPPPPPPP                     P                 P",
+  "P                         PPPPPP          P             PPPP",
+  "P                                                          P",
+  "PPPP                                 PP PPP      PPPP      P",
+  "P              PPPPPPP                                     P",
+  "P                                                          P",
+  "PPPP                                                PPPPPPPP",
+  "P      PPPP             SSS                                P",
+  "P                                                          P",
+  "P                                                          P",
+  "P               PPPPPPPPPPPPPPP     PPPPPPPPPPPPPPPPP      P",
+  "P        SSS                  PP                           P",
+  "P    PPPPPPPP         X       PPP                          P",
+  "P                             PPPP                         P",
+  "PPPPPPPPPPPPPPP PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"
+]

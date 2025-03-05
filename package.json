@@ -1,25 +1,24 @@
 {
-  "name": "pixitutorial",
+  "name": "CS4150 Final Project",
   "version": "1.0.0",
-  "description": "Pixi.js tutorial",
+  "description": "Final project for CS4150 at Northeastern University",
   "main": "index.ts",
   "scripts": {
-    "build": "webpack --config webpack/prod.ts ",
     "start": "webpack-dev-server --config webpack/base.ts --open"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/msaqib/pixitutorial.git"
+    "url": "git+https://github.com/aidan3445/NEU-GameAI-Final.git"
   },
   "keywords": [
     "pixi"
   ],
-  "author": "Muhammad Saqib Ilyas",
+  "author": "Aidan Weinberg",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/msaqib/pixitutorial/issues"
+    "url": "https://github.com/aidan3445/NEU-GameAI-Final/issues"
   },
-  "homepage": "https://github.com/msaqib/pixitutorial#readme",
+  "homepage": "https://github.com/aidan3445/NEU-GameAI-Final#readme",
   "dependencies": {
     "@pixi/math": "^7.4.2",
     "@pixi/math-extras": "^7.4.2",
@@ -27,13 +26,14 @@
     "fs-extra": "^11.2.0",
     "gsap": "^3.10.4",
     "matter-js": "^0.20.0",
-    "pixi.js": "^8.0.2"
+    "pixi.js": "^8.0.2",
+    "webpack": "^5.98.0"
   },
   "devDependencies": {
     "@babel/core": "^7.26.9",
     "@babel/preset-env": "^7.26.9",
     "@babel/preset-typescript": "^7.26.0",
-    "@types/node": "^22.13.8",
+    "@types/node": "^22.13.9",
     "@types/webpack-env": "^1.18.8",
     "babel-loader": "^8.4.1",
     "clean-webpack-plugin": "^4.0.0",
