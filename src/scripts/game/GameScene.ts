@@ -58,8 +58,8 @@ export class GameScene extends Scene {
 
         if (this.player.body.speed > App.config.playerMaxSpeed) {
           Matter.Body.setVelocity(this.player.body, {
-            x: App.config.playerMaxSpeed * Math.sign(this.player.body.velocity.x),
-            y: this.player.body.velocity.y
+            x: App.config.playerMaxSpeed * Math.sign(this.player.velocity.x),
+            y: this.player.velocity.y
           });
         }
 
@@ -75,7 +75,19 @@ export class GameScene extends Scene {
           const player = colliders.find(body => body.id === this.player?.body.id);
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
           if (player && platform && pair.collision.normal.y <= 0) {
-            this.player.land();
+            this.player.land(pair.collision.normal);
+          }
+        });
+      });
+
+    Matter.Events.on(App.physics, 'collisionEnd',
+      (event: Matter.IEventCollision<Matter.Engine>) => {
+        event.pairs.forEach((pair) => {
+          const colliders = [pair.bodyA, pair.bodyB];
+          const player = colliders.find(body => body.id === this.player?.body.id);
+          const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
+          if (player && platform) {
+            this.player.falling(pair.collision.normal);
           }
         });
       });
@@ -105,13 +117,11 @@ export class GameScene extends Scene {
         case "ArrowLeft":
         case "a":
           App.controllerInput.left = false;
-          this.player.move(0.1);
           this.player.moving = false;
           break;
         case "ArrowRight":
         case "d":
           App.controllerInput.right = false;
-          this.player.move(-0.1);
           this.player.moving = false;
           break;
         case "ArrowUp":

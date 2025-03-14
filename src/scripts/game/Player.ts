@@ -11,6 +11,10 @@ export class Player {
   canJump: boolean = false;
   jumpCooldown: boolean = false;
 
+  contacts: Matter.Vector[] = [];
+
+  debugText: PIXI.Text;
+
   get velocity() {
     return this.body.velocity;
   }
@@ -19,6 +23,16 @@ export class Player {
     this.container = new PIXI.Container();
     this.createSprite(startPosition);
     this.createBody();
+
+    this.debugText = new PIXI.Text({
+      text: "0",
+      style: {
+        fontFamily: "Arial",
+        fontSize: 204,
+        fill: 0xffffff,
+      }
+    });
+    this.sprite.addChild(this.debugText);
   }
 
   createSprite(startPosition: PIXI.Point) {
@@ -31,6 +45,7 @@ export class Player {
 
     // this is the only sprite with anchor in the center of mass
     this.sprite.anchor.set(0.5, 0.5);
+
   }
 
   createBody() {
@@ -41,7 +56,7 @@ export class Player {
       this.sprite.height,
       {
         mass: 50,
-        inertia: Infinity,
+        inertia: Infinity
       });
 
     Matter.World.add(App.physics.world, this.body);
@@ -59,11 +74,16 @@ export class Player {
   jump() {
     if (this.canJump && !this.jumpCooldown) {
       Matter.Body.setVelocity(this.body, {
-        x: this.body.velocity.x,
+        x: this.velocity.x,
         y: 0
       });
+
+      const wallJump = this.contacts.reduce((acc, normal) => {
+        return acc + normal.x;
+      }, 0);
+
       Matter.Body.applyForce(this.body, this.body.position, {
-        x: 0,
+        x: wallJump * App.config.playerSpeed * 0.5,
         y: -App.config.playerJump
       });
       this.canJump = false;
@@ -74,13 +94,30 @@ export class Player {
     }
   }
 
-  land() {
+  land(normal: Matter.Vector) {
     this.canJump = true;
     this.sprite.texture = App.sprite("player").texture;
+    this.contacts.push(normal);
+    Matter.Body.setVelocity(this.body, {
+      x: 0,
+      y: this.velocity.y
+    });
+  }
+
+  falling(normal: Matter.Vector) {
+    const toRemoveIndex = this.contacts.findIndex((n) => n.x === normal.x && n.y === normal.y);
+    this.contacts = this.contacts.filter((_, index) => index !== toRemoveIndex);
+
+    if (this.contacts.length === 0) {
+      this.canJump = false;
+      this.sprite.texture = App.res("playerJumping");
+    }
   }
 
   update() {
     this.sprite.position = this.body.position;
     this.sprite.rotation = this.body.angle;
+
+    this.debugText.text = `${this.velocity.x.toFixed(2)}\n${this.velocity.y.toFixed(2)}`;
   }
 }

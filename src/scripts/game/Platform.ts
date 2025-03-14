@@ -49,6 +49,7 @@ export class Platform {
       {
         isStatic: true,
         friction: 1,
+        frictionStatic: 1,
       });
     Matter.World.add(App.physics.world, this.body);
   }

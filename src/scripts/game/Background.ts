@@ -26,8 +26,8 @@ export class Background {
     const xIndex = i % 3;
     const yIndex = Math.floor(i / 3);
 
-    sprite.x = sprite.width * xIndex;
-    sprite.y = sprite.height * yIndex;
+    sprite.x = (sprite.width - 1) * xIndex;
+    sprite.y = (sprite.height - 1) * yIndex;
     this.container.addChild(sprite);
     this.sprites.push(sprite);
   }
