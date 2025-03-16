@@ -20,6 +20,7 @@ export class ScenesManager {
 
     this.scene = new App.config.scenes[sceneName]();
     if (this.scene) {
+      this.container.removeChildren();
       this.container.addChild(this.scene.container);
     }
   }

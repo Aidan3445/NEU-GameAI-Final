@@ -19,14 +19,11 @@ export class Scene {
     }
   }
 
-  create() {
-  }
+  create() { }
 
-  update(_dt: PIXI.Ticker) {
-  }
+  update(_dt: PIXI.Ticker) { }
 
-  destroy() {
-  }
+  destroy() { }
 
   remove() {
     if (App.app) {

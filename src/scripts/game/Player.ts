@@ -13,34 +13,32 @@ export class Player {
 
   contacts: Matter.Vector[] = [];
 
-  debugText: PIXI.Text;
+  debugText = new PIXI.Text({
+    text: "",
+    style: {
+      fontFamily: "Arial",
+      fontSize: 204,
+      fill: 0xffffff,
+    },
+    zIndex: 1000
+  });
 
   get velocity() {
     return this.body.velocity;
   }
 
-  constructor(startPosition: PIXI.Point) {
+  constructor() {
     this.container = new PIXI.Container();
-    this.createSprite(startPosition);
+    this.createSprite();
     this.createBody();
 
-    this.debugText = new PIXI.Text({
-      text: "0",
-      style: {
-        fontFamily: "Arial",
-        fontSize: 204,
-        fill: 0xffffff,
-      }
-    });
     this.sprite.addChild(this.debugText);
   }
 
-  createSprite(startPosition: PIXI.Point) {
+  createSprite() {
     this.sprite = App.sprite("player");
-    this.sprite.position = new PIXI.Point(
-      (startPosition.x - 0.5) * App.config.tileSize,
-      (startPosition.y - 0.5) * App.config.tileSize);
-    this.sprite.setSize(App.config.tileSize);
+    this.sprite.position = new PIXI.Point(0, 0);
+    this.sprite.setSize(App.config.tileSize * App.config.playerScale);
     this.container.addChild(this.sprite);
 
     // this is the only sprite with anchor in the center of mass
@@ -56,7 +54,9 @@ export class Player {
       this.sprite.height,
       {
         mass: 50,
-        inertia: Infinity
+        inertia: Infinity,
+        friction: 0.05,
+        frictionAir: 0,
       });
 
     Matter.World.add(App.physics.world, this.body);
@@ -78,9 +78,12 @@ export class Player {
         y: 0
       });
 
-      const wallJump = this.contacts.reduce((acc, normal) => {
+      const wallJump = 0;
+      /*
+        this.contacts.reduce((acc, normal) => {
         return acc + normal.x;
       }, 0);
+      */
 
       Matter.Body.applyForce(this.body, this.body.position, {
         x: wallJump * App.config.playerSpeed * 0.5,
@@ -94,6 +97,15 @@ export class Player {
     }
   }
 
+  drop() {
+    Matter.Body.applyForce(this.body, this.body.position, {
+      x: 0,
+      y: App.config.playerJump / 2
+    });
+
+    this.sprite.texture = App.res("playerDropping");
+  }
+
   land(normal: Matter.Vector) {
     this.canJump = true;
     this.sprite.texture = App.sprite("player").texture;
@@ -104,7 +116,7 @@ export class Player {
     });
   }
 
-  falling(normal: Matter.Vector) {
+  leftPlatform(normal: Matter.Vector) {
     const toRemoveIndex = this.contacts.findIndex((n) => n.x === normal.x && n.y === normal.y);
     this.contacts = this.contacts.filter((_, index) => index !== toRemoveIndex);
 
@@ -118,6 +130,11 @@ export class Player {
     this.sprite.position = this.body.position;
     this.sprite.rotation = this.body.angle;
 
-    this.debugText.text = `${this.velocity.x.toFixed(2)}\n${this.velocity.y.toFixed(2)}`;
+    this.debugText.text = `${this.body.position.x.toFixed(2)}, ${this.body.position.y.toFixed(2)}`;
+  }
+
+  destroy() {
+    Matter.World.remove(App.physics.world, this.body);
+    this.container.destroy();
   }
 }

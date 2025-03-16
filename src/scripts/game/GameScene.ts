@@ -1,70 +1,86 @@
 import * as PIXI from 'pixi.js';
+import Matter from 'matter-js';
 import { Scene } from '../system/Scene';
 import { App } from '../system/App';
 import { Player } from './Player';
 import { Platform } from './Platform';
-import Matter from 'matter-js';
 import { Camera } from './Camera';
 import { buildLevel } from '../system/LevelBuilder';
 
 export class GameScene extends Scene {
   camera!: Camera;
   player!: Player;
+  playerSpawn!: PIXI.Point;
   platforms!: Platform[];
 
   create() {
-    const { playerStart, platforms, cameraBounds } = buildLevel(level);
+    const { playerStart, platforms, levelRect } = buildLevel(level);
 
-    this.createCamera(cameraBounds);
-
-    this.createPlayer(playerStart);
+    this.playerSpawn = playerStart;
+    this.createPlayer();
     this.createPlatforms(platforms);
+    this.createCamera(levelRect);
 
     this.physicsEvents();
     this.keyEvents();
+
+    this.spawn(this.playerSpawn);
   }
 
-  createCamera(cameraBounds: PIXI.Point) {
-    this.camera = new Camera(
-      Camera.CenterFollow,
-      window.innerWidth,
-      window.innerHeight,
-      cameraBounds,
-      this.container
-    );
+  createCamera(levelRect: PIXI.Rectangle) {
+    this.camera = new Camera(Camera.CenterFollow, levelRect, this.container);
+
+    this.camera.bg.container.zIndex = -1;
   }
 
-  createPlayer(playerStart: PIXI.Point) {
-    this.player = new Player(playerStart);
+  createPlayer() {
+    this.player = new Player();
     this.container.addChild(this.player.container);
+
+    this.player.container.zIndex = 100;
   }
 
   createPlatforms(platforms: PIXI.Rectangle[]) {
     this.platforms = platforms.map((platform) => {
       const p = new Platform(platform);
       this.container.addChild(p.container);
+      p.container.zIndex = 50;
       return p;
     });
+  }
+
+  // spawn the player at a specific grid position
+  // also sets a spawn point for the player
+  spawn(position: PIXI.Point) {
+    this.playerSpawn = position;
+
+    position = new PIXI.Point(
+      position.x * App.config.tileSize + App.config.tileSize / 2,
+      position.y * App.config.tileSize + App.config.tileSize / 2
+    );
+
+    Matter.Body.setPosition(this.player.body, position);
   }
 
   physicsEvents() {
     Matter.Events.on(App.physics, 'beforeUpdate',
       () => {
-        if (App.controllerInput.left) this.player.move(-1);
-        if (App.controllerInput.right) this.player.move(1);
-        if (App.controllerInput.jump && this.player.canJump) {
-          this.player.jump();
+        if (App.controllerInput.drop && !this.player.canJump) {
+          this.player.drop();
+          App.controllerInput.drop = false;
+        } else {
+          if (App.controllerInput.left) this.player.move(-1);
+          if (App.controllerInput.right) this.player.move(1);
+          if (App.controllerInput.jump && this.player.canJump) {
+            this.player.jump();
+          }
         }
 
         if (this.player.body.speed > App.config.playerMaxSpeed) {
           Matter.Body.setVelocity(this.player.body, {
             x: App.config.playerMaxSpeed * Math.sign(this.player.velocity.x),
-            y: this.player.velocity.y
+            y: Math.min(this.player.velocity.y, App.config.playerMaxFallSpeed)
           });
-        }
-
-        if (this.player.body.angularSpeed > App.config.playerMaxAngularSpeed) {
-          Matter.Body.setAngularSpeed(this.player.body, App.config.playerMaxAngularSpeed * Math.sign(this.player.body.angularVelocity));
         }
       });
 
@@ -76,6 +92,7 @@ export class GameScene extends Scene {
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
           if (player && platform && pair.collision.normal.y <= 0) {
             this.player.land(pair.collision.normal);
+            App.controllerInput.drop = false;
           }
         });
       });
@@ -87,7 +104,8 @@ export class GameScene extends Scene {
           const player = colliders.find(body => body.id === this.player?.body.id);
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
           if (player && platform) {
-            this.player.falling(pair.collision.normal);
+            // add delay for more forgiving platforming
+            setTimeout(() => this.player.leftPlatform(pair.collision.normal), 100);
           }
         });
       });
@@ -109,6 +127,10 @@ export class GameScene extends Scene {
         case " ":
           App.controllerInput.jump = true;
           break;
+        case "ArrowDown":
+        case "s":
+          App.controllerInput.drop = true;
+          break;
       }
     });
 
@@ -117,32 +139,49 @@ export class GameScene extends Scene {
         case "ArrowLeft":
         case "a":
           App.controllerInput.left = false;
-          this.player.moving = false;
           break;
         case "ArrowRight":
         case "d":
           App.controllerInput.right = false;
-          this.player.moving = false;
           break;
         case "ArrowUp":
         case "w":
         case " ":
           App.controllerInput.jump = false;
           break;
+        case "ArrowDown":
+        case "s":
+          App.controllerInput.drop = false;
+          break;
+      }
+
+      if (!App.controllerInput.left && !App.controllerInput.right && this.player.canJump) {
+        Matter.Body.setVelocity(this.player.body, {
+          x: 0,
+          y: this.player.velocity.y
+        });
       }
     });
   }
 
   update(dt: PIXI.Ticker) {
+    if (this.player.body.position.y > this.camera.shift.height) {
+      console.log("Player fell off the map", this.playerSpawn.x, this.playerSpawn.y,
+        this.player.body.position.x, this.player.body.position.y);
+      this.spawn(this.playerSpawn);
+      this.camera.state = new PIXI.Point(0, 0);
+    }
+
     super.update(dt)
 
     this.camera.update(this.player.body);
-    this.camera.apply(this.player.body);
 
     this.platforms.forEach((platform) => {
       this.camera.apply(platform.body);
       platform.update();
     });
+
+    this.camera.apply(this.player.body);
     this.player.update();
   }
 }
@@ -169,15 +208,32 @@ const level = [
   "P                         PPPPPP          P             PPPP",
   "P                                                          P",
   "PPPP                                 PP PPP      PPPP      P",
-  "P              PPPPPPP                                     P",
   "P                                                          P",
+  "P             PPPPPPPPP                                    P",
   "PPPP                                                PPPPPPPP",
-  "P      PPPP             SSS                                P",
+  "P      PPPP             SSS         PPPPPP                 P",
   "P                                                          P",
-  "P                                                          P",
+  "P                            P                             P",
+  "P                            P                             P",
+  "P         PP                 P                PPPPPPPP     P",
+  "P        PPPP                P                             P",
+  "P     PPPPPPPPPPP            P                             P",
+  "P                            P                             P",
+  "P                     X      P                             P",
   "P               PPPPPPPPPPPPPPP     PPPPPPPPPPPPPPPPP      P",
   "P        SSS                  PP                           P",
-  "P    PPPPPPPP         X       PPP                          P",
+  "P    PPPPPPPP                 PPP                          P",
   "P                             PPPP                         P",
-  "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP"
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
 ]

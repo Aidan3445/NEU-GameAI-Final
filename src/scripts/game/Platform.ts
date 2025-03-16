@@ -9,6 +9,16 @@ export class Platform {
   gridRect: PIXI.Rectangle;
   body!: Matter.Body;
 
+  debugText = new PIXI.Text({
+    text: "",
+    style: {
+      fontFamily: "Arial",
+      fontSize: 100,
+      fill: 0xffffff,
+    },
+    zIndex: 1000
+  });
+
   constructor(gridRect: PIXI.Rectangle) {
     this.container = new PIXI.Container();
     this.sprites = [];
@@ -48,8 +58,7 @@ export class Platform {
       gridRect.height * App.config.tileSize,
       {
         isStatic: true,
-        friction: 1,
-        frictionStatic: 1,
+        friction: 0,
       });
     Matter.World.add(App.physics.world, this.body);
   }
@@ -67,5 +76,12 @@ export class Platform {
       sprite.x = this.body.position.x - (this.gridRect.width / 2) * App.config.tileSize + xIndex * App.config.tileSize;
       sprite.y = this.body.position.y - (this.gridRect.height / 2) * App.config.tileSize + yIndex * App.config.tileSize;
     });
+
+    this.debugText.text = `${this.body.position.x.toFixed(2)}\n${this.body.position.y.toFixed(2)}`;
+  }
+
+  destroy() {
+    Matter.World.remove(App.physics.world, this.body);
+    this.container.destroy({ children: true });
   }
 }

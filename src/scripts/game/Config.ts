@@ -13,12 +13,10 @@ export class Config {
   static stage: PIXI.Container;
   // tiles in pixels
   static tileSize = 32;
-  // how close to the edge of the screen the player can go
-  static playerBoundPercentage = 0.8;
-
-  static playerSpeed = 1;
-  static playerJump = 2;
-  static playerMaxSpeed = 2;
-  static playerMaxAngularSpeed = 0.05;
+  static playerScale = 0.8;
+  static playerSpeed = 0.75;
+  static playerJump = 1.75;
+  static playerMaxSpeed = 1;
+  static playerMaxFallSpeed = 20;
 }
 

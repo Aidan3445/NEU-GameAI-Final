@@ -24,10 +24,10 @@ export function buildLevel(levelPlan: string[]) {
     }
   }
 
-  const cameraBounds: PIXI.Point =
-    new PIXI.Point(levelPlan[0].length * App.config.tileSize, levelPlan.length * App.config.tileSize);
+  const levelRect: PIXI.Rectangle =
+    new PIXI.Rectangle(0, 0, levelPlan[0].length * App.config.tileSize, levelPlan.length * App.config.tileSize);
 
-  return { playerStart, platforms, cameraBounds };
+  return { playerStart, platforms, levelRect };
 }
 
 function getBlock(x: number, y: number, levelPlan: string[]) {

@@ -15,10 +15,12 @@ class Application {
     left: boolean;
     right: boolean;
     jump: boolean;
+    drop: boolean;
   } = {
       left: false,
       right: false,
-      jump: false
+      jump: false,
+      drop: false,
     };
 
   run(config: typeof Config) {
