@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Final project for CS4150 at Northeastern University",
   "main": "index.ts",
+  "type": "module",
   "scripts": {
     "start": "webpack-dev-server --config webpack/base.ts --open"
   },
