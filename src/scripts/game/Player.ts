@@ -43,7 +43,6 @@ export class Player {
 
     // this is the only sprite with anchor in the center of mass
     this.sprite.anchor.set(0.5, 0.5);
-
   }
 
   createBody() {
