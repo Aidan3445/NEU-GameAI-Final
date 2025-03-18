@@ -1,9 +1,8 @@
 import webpack from "webpack";
 import HtmlWebpackPlugin from "html-webpack-plugin";
 import { CleanWebpackPlugin } from "clean-webpack-plugin";
-import { Configuration } from "webpack";
 
-const config: Configuration = {
+const config = {
   mode: "development",
   devtool: "eval-source-map",
   entry: "./src/scripts/index.ts",
