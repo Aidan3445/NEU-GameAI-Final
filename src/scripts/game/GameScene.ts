@@ -16,7 +16,7 @@ export class GameScene extends Scene {
   flag!: Flag;
 
   create() {
-    const { playerStart, platforms, levelRect, flagPoint } = buildLevel(level);
+    const { playerStart, platforms, levelRect, flagPoint } = buildLevel(testLevel);
 
     this.playerSpawn = playerStart;
     this.createPlayer();
@@ -258,4 +258,32 @@ const level = [
   "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
   "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
   "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+];
+
+const testLevel = [
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "  X             PP                                                                                                       ",
+  "PPPPP            P      P                                                                                                ",
+  "                                                                                                                         ",
+  "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
 ]
