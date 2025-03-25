@@ -6,18 +6,22 @@ import { Player } from './Player';
 import { Platform } from './Platform';
 import { Camera } from './Camera';
 import { buildLevel } from '../system/LevelBuilder';
+import { Flag } from './Flag';
 
 export class GameScene extends Scene {
   camera!: Camera;
   player!: Player;
   playerSpawn!: PIXI.Point;
   platforms!: Platform[];
+  flag!: Flag;
 
   create() {
-    const { playerStart, platforms, levelRect } = buildLevel(level);
+    const { playerStart, platforms, levelRect, flagPoint } = buildLevel(level);
 
     this.playerSpawn = playerStart;
     this.createPlayer();
+    this.createFlag(flagPoint);
+
     this.createPlatforms(platforms);
     this.createCamera(levelRect);
 
@@ -38,6 +42,13 @@ export class GameScene extends Scene {
     this.container.addChild(this.player.container);
 
     this.player.container.zIndex = 100;
+  }
+
+  createFlag(flagPoint: PIXI.Point) {
+    this.flag = new Flag(flagPoint);
+    this.container.addChild(this.flag.container);
+
+    this.flag.container.zIndex = 75;
   }
 
   createPlatforms(platforms: PIXI.Rectangle[]) {
@@ -90,6 +101,14 @@ export class GameScene extends Scene {
           const colliders = [pair.bodyA, pair.bodyB];
           const player = colliders.find(body => body.id === this.player?.body.id);
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
+
+          const flag = colliders.find(body => body.id === this.flag?.body.id);
+          console.log(colliders)
+          if (player && flag) {
+            console.log("Player reached the flag");
+            this.spawn(this.playerSpawn);
+          }
+
           if (player && platform && pair.collision.normal.y <= 0) {
             this.player.land(pair.collision.normal);
             App.controllerInput.drop = false;
@@ -183,6 +202,9 @@ export class GameScene extends Scene {
 
     this.camera.apply(this.player.body);
     this.player.update();
+
+    this.camera.apply(this.flag.body);
+    this.flag.update();
   }
 }
 

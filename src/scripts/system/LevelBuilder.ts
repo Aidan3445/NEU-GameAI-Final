@@ -3,6 +3,7 @@ import { App } from './App';
 
 export function buildLevel(levelPlan: string[]) {
   const playerStart: PIXI.Point = new PIXI.Point();
+  const flagPoint: PIXI.Point = new PIXI.Point();
   const platforms: PIXI.Rectangle[] = [];
 
   for (let y = 0; y < levelPlan.length; y++) {
@@ -21,13 +22,16 @@ export function buildLevel(levelPlan: string[]) {
           }
         }
       }
+      if (levelPlan[y][x] === 'F') {
+        flagPoint.set(x, y);
+      }
     }
   }
 
   const levelRect: PIXI.Rectangle =
     new PIXI.Rectangle(0, 0, levelPlan[0].length * App.config.tileSize, levelPlan.length * App.config.tileSize);
 
-  return { playerStart, platforms, levelRect };
+  return { playerStart, platforms, levelRect, flagPoint};
 }
 
 function getBlock(x: number, y: number, levelPlan: string[]) {

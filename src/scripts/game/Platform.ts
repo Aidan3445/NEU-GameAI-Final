@@ -63,10 +63,10 @@ export class Platform {
     Matter.World.add(App.physics.world, this.body);
   }
 
-  move(vector: PIXI.Point) {
-    this.body.position.x -= vector.x;
-    this.body.position.y -= vector.y;
-  }
+  // move(vector: PIXI.Point) {
+  //   this.body.position.x -= vector.x;
+  //   this.body.position.y -= vector.y;
+  // }
 
   update() {
     this.sprites.forEach((sprite, index) => {
