@@ -7,6 +7,7 @@ import { Platform } from './Platform';
 import { Camera } from './Camera';
 import { buildLevel } from '../system/LevelBuilder';
 import { Flag } from './Flag';
+import { getLevelNodes } from '../ai/preprocess';
 
 export class GameScene extends Scene {
   camera!: Camera;
@@ -16,6 +17,8 @@ export class GameScene extends Scene {
   flag!: Flag;
 
   create() {
+    getLevelNodes(level);
+
     const { playerStart, platforms, levelRect, flagPoint } = buildLevel(testLevel);
 
     this.playerSpawn = playerStart;
@@ -29,6 +32,7 @@ export class GameScene extends Scene {
     this.keyEvents();
 
     this.spawn(this.playerSpawn);
+
   }
 
   createCamera(levelRect: PIXI.Rectangle) {
@@ -103,7 +107,6 @@ export class GameScene extends Scene {
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
 
           const flag = colliders.find(body => body.id === this.flag?.body.id);
-          console.log(colliders)
           if (player && flag) {
             console.log("Player reached the flag");
             this.spawn(this.playerSpawn);
@@ -260,7 +263,7 @@ const level = [
   "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
 ];
 
-const testLevel = [
+const oldTestLevel = [
   "                                                                                                                         ",
   "                                                                                                                         ",
   "                                                                                                                         ",
@@ -280,10 +283,32 @@ const testLevel = [
   "                                                                                                                         ",
   "                                                                                                                         ",
   "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "  X             PP                                                                                                       ",
+  "PPPPP         P                                                                                                          ",
+  "               P                                                                                                         ",
+  "  X             P                                                                                                        ",
   "PPPPP            P      P                                                                                                ",
   "                                                                                                                         ",
   "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
 ]
+
+const testLevel = [
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "                                 ",
+  "X  P                             ",
+  "P  P                             ",
+];
+
