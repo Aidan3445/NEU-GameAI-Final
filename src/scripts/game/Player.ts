@@ -186,7 +186,7 @@ export class Player {
 }
 
 
-// explored on desmos: https://www.desmos.com/calculator/st2qfmsm17
+// explored on desmos: https://www.desmos.com/calculator/pv5ycumls5
 const j = 190;
 const m = 350;
 // debug left and right parabola arc based on config
