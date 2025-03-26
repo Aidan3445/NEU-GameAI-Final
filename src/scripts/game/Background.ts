@@ -49,5 +49,11 @@ export class Background {
       sprite.y -= vector.y;
       sprite.x -= vector.x;
     });
+
+    this.container.children.forEach((sprite) => {
+      if (this.sprites.includes(sprite as PIXI.Sprite)) return;
+      sprite.y -= vector.y;
+      sprite.x -= vector.x;
+    });
   }
 }

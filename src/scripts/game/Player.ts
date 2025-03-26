@@ -13,6 +13,12 @@ export class Player {
 
   contacts: Matter.Vector[] = [];
 
+  backgroundContainer: PIXI.Container;
+
+  leftParabola: PIXI.Graphics = new PIXI.Graphics();
+  rightParabola: PIXI.Graphics = new PIXI.Graphics();
+  centerTop: PIXI.Graphics = new PIXI.Graphics();
+
   debugText = new PIXI.Text({
     text: "",
     style: {
@@ -27,12 +33,14 @@ export class Player {
     return this.body.velocity;
   }
 
-  constructor() {
+  constructor(backgroundContainer: PIXI.Container) {
     this.container = new PIXI.Container();
     this.createSprite();
     this.createBody();
 
     this.sprite.addChild(this.debugText);
+
+    this.backgroundContainer = backgroundContainer;
   }
 
   createSprite() {
@@ -93,6 +101,32 @@ export class Player {
 
       this.jumpCooldown = true;
       setTimeout(() => this.jumpCooldown = false, 500);
+
+      // draw parabola of jumps to the left
+      this.leftParabola = new PIXI.Graphics();
+      this.leftParabola.moveTo(this.body.position.x, this.body.position.y);
+      for (let x = 0; x < 1000; x++) {
+        this.leftParabola.lineTo(this.body.position.x - x, this.body.position.y + f(x));
+      }
+      this.leftParabola.stroke({ color: 0xff0000, pixelLine: true });
+      this.backgroundContainer.addChild(this.leftParabola);
+
+      // draw parabola of jumps to the right
+      this.rightParabola = new PIXI.Graphics();
+      this.rightParabola.moveTo(this.body.position.x, this.body.position.y);
+      for (let x = 0; x < 1000; x++) {
+        this.rightParabola.lineTo(this.body.position.x + x, this.body.position.y + f(x));
+      }
+      this.rightParabola.stroke({ color: 0xff0000, pixelLine: true });
+      this.backgroundContainer.addChild(this.rightParabola);
+
+      // draw parabola of jumps to the center
+      this.centerTop = new PIXI.Graphics();
+      // m/2 = 175
+      this.centerTop.moveTo(this.body.position.x - 175, this.body.position.y + h());
+      this.centerTop.lineTo(this.body.position.x + 175, this.body.position.y + h());
+      this.centerTop.stroke({ color: 0xff0000, pixelLine: true });
+      this.backgroundContainer.addChild(this.centerTop);
     }
   }
 
@@ -113,6 +147,10 @@ export class Player {
       x: 0,
       y: this.velocity.y
     });
+
+    this.backgroundContainer.removeChild(this.leftParabola);
+    this.backgroundContainer.removeChild(this.rightParabola);
+    this.backgroundContainer.removeChild(this.centerTop);
   }
 
   leftPlatform(normal: Matter.Vector) {
@@ -130,10 +168,33 @@ export class Player {
     this.sprite.rotation = this.body.angle;
 
     this.debugText.text = `${this.body.position.x.toFixed(2)}, ${this.body.position.y.toFixed(2)}`;
+
+    const circle = new PIXI.Graphics();
+    circle.circle(this.body.position.x, this.body.position.y, 10);
+    circle.fill(0x00ffff);
+    this.backgroundContainer.addChild(circle);
+
+    setTimeout(() => {
+      this.backgroundContainer.removeChild(circle);
+    }, 1000);
   }
 
   destroy() {
     Matter.World.remove(App.physics.world, this.body);
     this.container.destroy();
   }
+}
+
+
+// explored on desmos: https://www.desmos.com/calculator/st2qfmsm17
+const j = 190;
+const m = 350;
+// debug left and right parabola arc based on config
+function f(x: number) {
+  return (x / j) * (x - m);
+}
+
+// debug center top parabola arc based on config
+function h() {
+  return -(m * m) / (4 * j);
 }

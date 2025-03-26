@@ -19,14 +19,14 @@ export class GameScene extends Scene {
   create() {
     getLevelNodes(level);
 
-    const { playerStart, platforms, levelRect, flagPoint } = buildLevel(testLevel);
+    const { playerStart, platforms, levelRect, flagPoint } = buildLevel(oldTestLevel);
+    this.createCamera(levelRect);
 
     this.playerSpawn = playerStart;
     this.createPlayer();
     this.createFlag(flagPoint);
 
     this.createPlatforms(platforms);
-    this.createCamera(levelRect);
 
     this.physicsEvents();
     this.keyEvents();
@@ -42,7 +42,7 @@ export class GameScene extends Scene {
   }
 
   createPlayer() {
-    this.player = new Player();
+    this.player = new Player(this.camera.bg.container);
     this.container.addChild(this.player.container);
 
     this.player.container.zIndex = 100;
