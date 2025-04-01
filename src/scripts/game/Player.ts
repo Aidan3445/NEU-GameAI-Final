@@ -187,14 +187,12 @@ export class Player {
 
 
 // explored on desmos: https://www.desmos.com/calculator/pv5ycumls5
-const j = 190;
-const m = 350;
 // debug left and right parabola arc based on config
 function f(x: number) {
-  return (x / j) * (x - m);
+  return (x / App.config.J) * (x - App.config.M);
 }
 
 // debug center top parabola arc based on config
 function h() {
-  return -(m * m) / (4 * j);
+  return -(App.config.M * App.config.M) / (4 * App.config.J);
 }

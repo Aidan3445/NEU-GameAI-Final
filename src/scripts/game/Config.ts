@@ -18,5 +18,11 @@ export class Config {
   static playerJump = 1.75;
   static playerMaxSpeed = 1;
   static playerMaxFallSpeed = 20;
+
+  // Magic numbers for the parabola
+  // if the playerJump or playerMaxSpeed changes
+  // update these numbers
+  static J = 190;
+  static M = 350;
 }
 

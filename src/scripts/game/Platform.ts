@@ -19,6 +19,8 @@ export class Platform {
     zIndex: 1000
   });
 
+  cellDebugText: PIXI.Text[] = [];
+
   constructor(gridRect: PIXI.Rectangle) {
     this.container = new PIXI.Container();
     this.sprites = [];
@@ -45,6 +47,22 @@ export class Platform {
     sprite.x = (gridRect.x + xIndex) * App.config.tileSize;
     sprite.y = (gridRect.y + yIndex) * App.config.tileSize;
     sprite.setSize(App.config.tileSize);
+
+    const cellDebugText = new PIXI.Text({
+      text: `(${(gridRect.x + xIndex)}, ${(gridRect.y + yIndex)})`,
+      style: {
+        fontFamily: "Arial",
+        fontSize: 8,
+        fill: 0xffffff,
+      },
+      zIndex: 1000
+    });
+    cellDebugText.x = sprite.x + sprite.width / 2;
+    cellDebugText.y = sprite.y + sprite.height / 2;
+    cellDebugText.anchor.set(0.5, 0.5);
+    this.cellDebugText.push(cellDebugText);
+    this.container.addChild(cellDebugText);
+
     this.container.addChild(sprite);
     this.sprites.push(sprite);
   }
