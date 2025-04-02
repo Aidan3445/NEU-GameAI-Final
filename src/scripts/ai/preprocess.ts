@@ -13,7 +13,6 @@ export function getLevelNodes(levelPlan: string[]) {
   for (let y = 0; y < levelPlan.length; y++) {
     for (let x = 0; x < levelPlan[y].length; x++) {
       if (levelPlan[y][x] === 'P') {
-        console.log(`Found platform at ${x},${y}`);
         const traversible = y === 0 || [' ', 'X', 'F'].includes(levelPlan[y - 1][x]);
         if (traversible) {
           const node = new Node(new PIXI.Point(x, y - 1));
@@ -29,15 +28,15 @@ export function getLevelNodes(levelPlan: string[]) {
   //   // console.log('node', node.point.x, node.point.y);
   //   getNeighbors(node, nodes, levelPlan);
   // }
-  getNeighbors(nodes.get(getNodeKey(19,23))!, nodes, levelPlan);
-  const curNodes = nodes.get(getNodeKey(19,23))!;
+  getNeighbors(nodes.get(getNodeKey(19, 23))!, nodes, levelPlan);
+  const curNodes = nodes.get(getNodeKey(19, 23))!;
   // const tempNodes = new Map<string, Node>();
   // for (const curNode of curNodes.neighbors) {
   //   tempNodes.set(getNodeKey(curNode.point.x, ), curNode);
   // }
-  
 
-  return {nodes, neighbors: curNodes.neighbors}
+
+  return { nodes, neighbors: curNodes.neighbors }
 }
 
 function getNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: string[]) {
@@ -54,17 +53,15 @@ function getNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: string[])
     node.addNeighbor(getNodeKey(node.point.x + 1, node.point.y), 1);
   }
 
-  // check can jump
-  if (nodes.get(getNodeKey(node.point.y - 1, node.point.x))) {
-    return;
-  }
+  // check can jump (nothing directly above)
+  if (levelPlan[node.point.y - 1][node.point.x] !== ' ') return;
 
   const h = Math.floor((App.config.M * App.config.M) / (4 * App.config.J) / tileSize);
   // console.log('h', h);
 
   // check jumps left under the parabola
-  console.log('xLoopfrom', node.point.x-20, 'to', node.point.x - (App.config.M/tileSize)/2);
-  for (let x = node.point.x-20; x <= node.point.x - (App.config.M/tileSize)/2; x++) {
+  console.log('xLoopfrom', node.point.x - 20, 'to', node.point.x - (App.config.M / tileSize) / 2);
+  for (let x = node.point.x - 20; x <= node.point.x - (App.config.M / tileSize) / 2; x++) {
     const inputX = (x - node.point.x) * tileSize;
     const yMax = Math.floor((inputX / App.config.J) * (inputX - App.config.M) / tileSize);
     console.log('actualX', x);
@@ -81,7 +78,7 @@ function getNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: string[])
   }
 
 }
-  
+
 
 
 

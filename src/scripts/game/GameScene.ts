@@ -20,9 +20,9 @@ export class GameScene extends Scene {
   neighbors!: Map<string, number>;
 
   create() {
-    const {nodes, neighbors} = getLevelNodes(oldTestLevel);
+    const { nodes, neighbors } = getLevelNodes(oldTestLevel);
     this.nodes = nodes;
-    this.neighbors = neighbors; 
+    this.neighbors = neighbors;
 
     const { playerStart, platforms, levelRect, flagPoint } = buildLevel(oldTestLevel);
     this.createCamera(levelRect);
@@ -214,11 +214,14 @@ export class GameScene extends Scene {
     this.camera.apply(this.flag.body);
     this.flag.update();
 
-    for (const [key, node] of this.neighbors) {
-      const circle = new PIXI.Graphics();
-      circle.circle(this.nodes.get(key)!.point.x * App.config.tileSize, this.nodes.get(key)!.point.y * App.config.tileSize, 1);
-      circle.fill(0x00ffff);
-      this.camera.bg.container.addChild(circle);
+    for (const [key, _] of this.neighbors) {
+      const frame = new PIXI.Graphics();
+      frame.rect(this.nodes.get(key)!.point.x * App.config.tileSize,
+        this.nodes.get(key)!.point.y * App.config.tileSize,
+        App.config.tileSize,
+        App.config.tileSize);
+      frame.stroke(0xff00ff);
+      this.camera.bg.container.addChild(frame);
     }
   }
 }
@@ -292,10 +295,10 @@ const oldTestLevel = [
   "                                                                                                                         ",
   "                                                                                                                         ",
   "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "PPPPP         P                                                                                                          ",
+  "              P                                                                                                          ",
+  "              P                                                                                                          ",
+  "              P                                                                                                          ",
+  "PPPPP         PP                                                                                                         ",
   "               P                                                                                                         ",
   "  X             P                                                                                                        ",
   "PPPPP            P      P                                                                                                ",
