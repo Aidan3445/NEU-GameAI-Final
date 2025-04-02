@@ -2,6 +2,9 @@ import * as PIXI from 'pixi.js';
 import { Node } from './node';
 import { App } from '../system/App';
 
+const traversibleChars = [' ', 'X', 'F', 'S'];
+// remove S when we implement spikes
+
 export function getNodeKey(x: number, y: number) {
   return `${x},${y}`;
 }
@@ -13,8 +16,8 @@ export function getLevelNodes(levelPlan: string[]) {
   // Get all the spaces above a platform that you can stand on
   for (let y = 0; y < levelPlan.length; y++) {
     for (let x = 0; x < levelPlan[y].length; x++) {
-      if (levelPlan[y][x] === 'P') {
-        const traversible = y === 0 || [' ', 'X', 'F'].includes(levelPlan[y - 1][x]);
+      if (!traversibleChars.includes(levelPlan[y][x])) {
+        const traversible = y === 0 || traversibleChars.includes(levelPlan[y - 1][x]);
         if (traversible) {
           if (levelPlan[y - 1]?.[x] === 'X') {
             debugPlayerStart = new PIXI.Point(x, y - 1);
@@ -29,13 +32,13 @@ export function getLevelNodes(levelPlan: string[]) {
 
   // Add neighbors to each node
   for (const [_, node] of nodes) {
-    getNeighbors(node, nodes, levelPlan);
+    setNeighbors(node, nodes, levelPlan);
   }
 
   return nodes;
 }
 
-export function getNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: string[]) {
+export function setNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: string[]) {
   // check left and right (walking)
   // neighbor is the tile above the platform that's valid
   const left = nodes.get(getNodeKey(node.point.x - 1, node.point.y));
@@ -59,6 +62,7 @@ export function getNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: st
   const maxJumpHeight = Math.floor((App.config.M * App.config.M) / (4 * App.config.J));
   for (let x = leftRectBound; x <= rightRectBound; x++) {
     for (let y = node.point.y - maxJumpHeight; y <= node.point.y + 20; y++) {
+      if (x === node.point.x && y == node.point.y) continue; // skip the node itself
       const nodeInCenterRect = nodes.get(getNodeKey(x, y));
       if (nodeInCenterRect) {
         node.addNeighbor(getNodeKey(x, y), 2);

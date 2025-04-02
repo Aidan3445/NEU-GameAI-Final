@@ -29,7 +29,6 @@ export class GameScene extends Scene {
     this.keyEvents();
 
     this.spawn(this.playerSpawn);
-
   }
 
   createCamera(levelRect: PIXI.Rectangle) {

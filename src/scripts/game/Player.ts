@@ -1,8 +1,8 @@
 import * as PIXI from "pixi.js";
 import { App } from "../system/App";
 import Matter from "matter-js";
-import { getLevelNodes, getNeighbors, getNodeKey } from "../ai/preprocess";
-import { Node } from "../ai/node";
+import { getLevelNodes, getNodeKey } from "../ai/preprocess";
+import { level } from "./GameScene";
 
 export class Player {
   container: PIXI.Container;
@@ -30,8 +30,6 @@ export class Player {
     },
     zIndex: 1000
   });
-
-  nodes: Map<string, Node> = getLevelNodes(level);
 
   get velocity() {
     return this.body.velocity;
@@ -193,18 +191,18 @@ export class Player {
     setTimeout(() => {
       this.backgroundContainer.removeChild(circle);
     }, 1000);
+    const nodes = getLevelNodes(level);
 
     const nodeKey = getNodeKey(
       Math.floor(this.body.position.x / App.config.tileSize),
       Math.floor(this.body.position.y / App.config.tileSize));
-    const node = this.nodes.get(nodeKey);
+    const node = nodes.get(nodeKey);
     if (!node) return;
-    getNeighbors(node, this.nodes, oldTestLevel);
     const neighbors = node.getNeighbors();
     for (const [key, _] of neighbors) {
       const frame = new PIXI.Graphics();
-      frame.rect(this.nodes.get(key)!.point.x * App.config.tileSize,
-        this.nodes.get(key)!.point.y * App.config.tileSize,
+      frame.rect(nodes.get(key)!.point.x * App.config.tileSize,
+        nodes.get(key)!.point.y * App.config.tileSize,
         App.config.tileSize,
         App.config.tileSize);
       frame.stroke(0xff00ff);
@@ -214,7 +212,6 @@ export class Player {
         this.backgroundContainer.removeChild(frame);
       }, 10);
     }
-    //*/
   }
 
   destroy() {
@@ -234,84 +231,3 @@ function f(x: number) {
 function h() {
   return -(App.config.M * App.config.M) / (4 * App.config.J);
 }
-
-
-const oldTestLevel = [
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "F                                                                                                                        ",
-  "PPPPP    PP                                                                                                              ",
-  "          P                 P                                                                                            ",
-  "           P                PP                                                                                           ",
-  "PPPPP        P          P   P  P                                                                                         ",
-  "               X                                                                                                         ",
-  "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-]
-
-export const level = [
-  "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "P                                                          P",
-  "P                                                          P",
-  "P                                                          P",
-  "P             F                     PPPPPP       SS        P",
-  "P           PPPPPPP                            PPPPPPP     P",
-  "P   PPPP                 PPPPPPP                           P",
-  "P            SSS                                        PPPP",
-  "PPPP    PPPPPPPP                                           P",
-  "P                                                PPPP      P",
-  "P   PPPP                         PPPPPPP                   P",
-  "P                                                          P",
-  "P                   SSS                                 PPPP",
-  "P      PPPPPP       PPPPPPPPP                PPPPP         P",
-  "P                                PPPPPP                 PPPP",
-  "P                                                          P",
-  "P                                       P                  P",
-  "PPPP        PPPPPPPP                     P                 P",
-  "P                         PPPPPP          P             PPPP",
-  "P                                                          P",
-  "PPPP                                 PP PPP      PPPP      P",
-  "P                                                          P",
-  "P             PPPPPPPPP                                    P",
-  "PPPP                                                PPPPPPPP",
-  "P      PPPP             SSS         PPPPPP                 P",
-  "P                                                          P",
-  "P                            P                             P",
-  "P                            P                             P",
-  "P         PP                 P                PPPPPPPP     P",
-  "P        PPPP                P                             P",
-  "P     PPPPPPPPPPP            P                             P",
-  "P                            P                             P",
-  "P                     X      P                             P",
-  "P               PPPPPPPPPPPPPPP     PPPPPPPPPPPPPPPPP      P",
-  "P        SSS                  PP                           P",
-  "P    PPPPPPPP                 PPP                          P",
-  "P                             PPPP                         P",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-];
