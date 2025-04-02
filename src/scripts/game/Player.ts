@@ -31,7 +31,7 @@ export class Player {
     zIndex: 1000
   });
 
-  nodes: Map<string, Node> = getLevelNodes(oldTestLevel).nodes;
+  nodes: Map<string, Node> = getLevelNodes(level);
 
   get velocity() {
     return this.body.velocity;
@@ -188,6 +188,7 @@ export class Player {
     const circle = new PIXI.Graphics();
     circle.circle(this.body.position.x, this.body.position.y, 10);
     circle.fill(0x00ffff);
+    circle.alpha = 0.2;
     this.backgroundContainer.addChild(circle);
     setTimeout(() => {
       this.backgroundContainer.removeChild(circle);
@@ -262,3 +263,55 @@ const oldTestLevel = [
   "               X                                                                                                         ",
   "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
 ]
+
+export const level = [
+  "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "P                                                          P",
+  "P                                                          P",
+  "P                                                          P",
+  "P             F                     PPPPPP       SS        P",
+  "P           PPPPPPP                            PPPPPPP     P",
+  "P   PPPP                 PPPPPPP                           P",
+  "P            SSS                                        PPPP",
+  "PPPP    PPPPPPPP                                           P",
+  "P                                                PPPP      P",
+  "P   PPPP                         PPPPPPP                   P",
+  "P                                                          P",
+  "P                   SSS                                 PPPP",
+  "P      PPPPPP       PPPPPPPPP                PPPPP         P",
+  "P                                PPPPPP                 PPPP",
+  "P                                                          P",
+  "P                                       P                  P",
+  "PPPP        PPPPPPPP                     P                 P",
+  "P                         PPPPPP          P             PPPP",
+  "P                                                          P",
+  "PPPP                                 PP PPP      PPPP      P",
+  "P                                                          P",
+  "P             PPPPPPPPP                                    P",
+  "PPPP                                                PPPPPPPP",
+  "P      PPPP             SSS         PPPPPP                 P",
+  "P                                                          P",
+  "P                            P                             P",
+  "P                            P                             P",
+  "P         PP                 P                PPPPPPPP     P",
+  "P        PPPP                P                             P",
+  "P     PPPPPPPPPPP            P                             P",
+  "P                            P                             P",
+  "P                     X      P                             P",
+  "P               PPPPPPPPPPPPPPP     PPPPPPPPPPPPPPPPP      P",
+  "P        SSS                  PP                           P",
+  "P    PPPPPPPP                 PPP                          P",
+  "P                             PPPP                         P",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+];

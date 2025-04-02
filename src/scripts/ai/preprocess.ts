@@ -28,19 +28,11 @@ export function getLevelNodes(levelPlan: string[]) {
   }
 
   // Add neighbors to each node
-  // for (const [_, node] of nodes) {
-  //   // console.log('node', node.point.x, node.point.y);
-  //   getNeighbors(node, nodes, levelPlan);
-  // }
-  getNeighbors(nodes.get(getNodeKey(debugPlayerStart!.x, debugPlayerStart!.y))!, nodes, levelPlan);
-  const curNodes = nodes.get(getNodeKey(debugPlayerStart!.x, debugPlayerStart!.y))!;
-  // const tempNodes = new Map<string, Node>();
-  // for (const curNode of curNodes.neighbors) {
-  //   tempNodes.set(getNodeKey(curNode.point.x, ), curNode);
-  // }
+  for (const [_, node] of nodes) {
+    getNeighbors(node, nodes, levelPlan);
+  }
 
-
-  return { nodes, neighbors: curNodes.neighbors }
+  return nodes;
 }
 
 export function getNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: string[]) {
@@ -56,7 +48,7 @@ export function getNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: st
   }
 
   // check can jump (nothing directly above)
-  if (levelPlan[node.point.y - 1][node.point.x] !== ' ') return;
+  if (levelPlan[node.point.y - 1]?.[node.point.x] !== ' ') return;
 
   // if we can jump, split checks into three parts with no overlap
   // center rectangle and two parabolic arcs on the left and right
@@ -88,16 +80,16 @@ export function getNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: st
     const rightX = node.point.x + x;
     const yMax = node.point.y + Math.floor((x / App.config.J) * (x - App.config.M));
     // check if the node is within the parabola up to 20 tiles below the tile
-    console.log('leftX =', leftX, 'rightX =', rightX, 'yMax =', yMax);
+    // console.log('leftX =', leftX, 'rightX =', rightX, 'yMax =', yMax);
     for (let y = yMax; y <= yMax + 20; y++) {
-      console.log(`(${leftX}, ${y})${leftHit ? '-X' : ''}, (${rightX}, ${y})${rightHit ? '-X' : ''}`);
+      // console.log(`(${leftX}, ${y})${leftHit ? '-X' : ''}, (${rightX}, ${y})${rightHit ? '-X' : ''}`);
 
       if (!leftHit) {
         const nodeUnderParabolaLeft = nodes.get(getNodeKey(leftX, y));
         if (nodeUnderParabolaLeft) {
           node.addNeighbor(getNodeKey(leftX, y), 2);
           leftHit = true;
-          console.log('leftHit', leftX, y);
+          // console.log('leftHit', leftX, y);
         }
       }
 
@@ -106,7 +98,7 @@ export function getNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: st
         if (nodeUnderParabolaRight) {
           node.addNeighbor(getNodeKey(rightX, y), 2);
           rightHit = true;
-          console.log('rightHit', rightX, y);
+          // console.log('rightHit', rightX, y);
         }
       }
 
