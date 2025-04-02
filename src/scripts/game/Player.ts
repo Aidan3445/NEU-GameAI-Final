@@ -17,9 +17,13 @@ export class Player {
 
   backgroundContainer: PIXI.Container;
 
+  // debug graphics
+
   leftParabola: PIXI.Graphics = new PIXI.Graphics();
   rightParabola: PIXI.Graphics = new PIXI.Graphics();
   centerTop: PIXI.Graphics = new PIXI.Graphics();
+
+  neighborRects: PIXI.Graphics[] = [];
 
   debugText = new PIXI.Text({
     text: "",
@@ -191,6 +195,12 @@ export class Player {
     setTimeout(() => {
       this.backgroundContainer.removeChild(circle);
     }, 1000);
+
+    // remove current neighbor rects
+    this.neighborRects.forEach((rect) => {
+      this.backgroundContainer.removeChild(rect);
+    });
+    this.neighborRects = [];
     const nodes = getLevelNodes(level);
 
     const nodeKey = getNodeKey(
@@ -208,9 +218,7 @@ export class Player {
       frame.stroke(0xff00ff);
       this.backgroundContainer.addChild(frame);
 
-      setTimeout(() => {
-        this.backgroundContainer.removeChild(frame);
-      }, 10);
+      this.neighborRects.push(frame);
     }
   }
 
