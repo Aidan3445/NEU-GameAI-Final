@@ -1,6 +1,8 @@
 import * as PIXI from "pixi.js";
 import { App } from "../system/App";
 import Matter from "matter-js";
+import { getLevelNodes, getNeighbors, getNodeKey } from "../ai/preprocess";
+import { Node } from "../ai/node";
 
 export class Player {
   container: PIXI.Container;
@@ -28,6 +30,8 @@ export class Player {
     },
     zIndex: 1000
   });
+
+  nodes: Map<string, Node> = getLevelNodes(oldTestLevel).nodes;
 
   get velocity() {
     return this.body.velocity;
@@ -104,27 +108,39 @@ export class Player {
 
       // draw parabola of jumps to the left
       this.leftParabola = new PIXI.Graphics();
-      this.leftParabola.moveTo(this.body.position.x, this.body.position.y);
-      for (let x = 0; x < 1000; x++) {
-        this.leftParabola.lineTo(this.body.position.x - x, this.body.position.y + f(x));
+      this.leftParabola.moveTo(
+        this.body.position.x - App.config.M * App.config.tileSize / 2,
+        this.body.position.y + h() * App.config.tileSize);
+      for (let x = App.config.M / 2; x <= App.config.M * 1.5; x++) {
+        this.leftParabola.lineTo(this.body.position.x - x * App.config.tileSize,
+          this.body.position.y + f(x) * App.config.tileSize);
       }
       this.leftParabola.stroke({ color: 0xff0000, pixelLine: true });
       this.backgroundContainer.addChild(this.leftParabola);
 
       // draw parabola of jumps to the right
       this.rightParabola = new PIXI.Graphics();
-      this.rightParabola.moveTo(this.body.position.x, this.body.position.y);
-      for (let x = 0; x < 1000; x++) {
-        this.rightParabola.lineTo(this.body.position.x + x, this.body.position.y + f(x));
+      this.rightParabola.moveTo(
+        this.body.position.x + App.config.M * App.config.tileSize / 2,
+        this.body.position.y + h() * App.config.tileSize);
+      for (let x = App.config.M / 2; x <= App.config.M * 1.5; x++) {
+        this.rightParabola.lineTo(this.body.position.x + x * App.config.tileSize,
+          this.body.position.y + f(x) * App.config.tileSize);
       }
       this.rightParabola.stroke({ color: 0xff0000, pixelLine: true });
       this.backgroundContainer.addChild(this.rightParabola);
 
-      // draw parabola of jumps to the center
+      // draw cap of the parabolas
       this.centerTop = new PIXI.Graphics();
-      // m/2 = 175
-      this.centerTop.moveTo(this.body.position.x - 175, this.body.position.y + h());
-      this.centerTop.lineTo(this.body.position.x + 175, this.body.position.y + h());
+      this.centerTop.moveTo(
+        (this.body.position.x - App.config.M * App.config.tileSize / 2),
+        (this.body.position.y + h() * App.config.tileSize)
+      );
+      this.centerTop.lineTo(
+        (this.body.position.x + App.config.M * App.config.tileSize / 2),
+        (this.body.position.y + h() * App.config.tileSize)
+      );
+
       this.centerTop.stroke({ color: 0xff0000, pixelLine: true });
       this.backgroundContainer.addChild(this.centerTop);
     }
@@ -173,10 +189,31 @@ export class Player {
     circle.circle(this.body.position.x, this.body.position.y, 10);
     circle.fill(0x00ffff);
     this.backgroundContainer.addChild(circle);
-
     setTimeout(() => {
       this.backgroundContainer.removeChild(circle);
     }, 1000);
+
+    const nodeKey = getNodeKey(
+      Math.floor(this.body.position.x / App.config.tileSize),
+      Math.floor(this.body.position.y / App.config.tileSize));
+    const node = this.nodes.get(nodeKey);
+    if (!node) return;
+    getNeighbors(node, this.nodes, oldTestLevel);
+    const neighbors = node.getNeighbors();
+    for (const [key, _] of neighbors) {
+      const frame = new PIXI.Graphics();
+      frame.rect(this.nodes.get(key)!.point.x * App.config.tileSize,
+        this.nodes.get(key)!.point.y * App.config.tileSize,
+        App.config.tileSize,
+        App.config.tileSize);
+      frame.stroke(0xff00ff);
+      this.backgroundContainer.addChild(frame);
+
+      setTimeout(() => {
+        this.backgroundContainer.removeChild(frame);
+      }, 10);
+    }
+    //*/
   }
 
   destroy() {
@@ -196,3 +233,32 @@ function f(x: number) {
 function h() {
   return -(App.config.M * App.config.M) / (4 * App.config.J);
 }
+
+
+const oldTestLevel = [
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "                                                                                                                         ",
+  "F                                                                                                                        ",
+  "PPPPP    PP                                                                                                              ",
+  "          P                 P                                                                                            ",
+  "           P                PP                                                                                           ",
+  "PPPPP        P          P   P  P                                                                                         ",
+  "               X                                                                                                         ",
+  "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+]

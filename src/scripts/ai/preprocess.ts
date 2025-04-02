@@ -8,6 +8,7 @@ export function getNodeKey(x: number, y: number) {
 
 export function getLevelNodes(levelPlan: string[]) {
   const nodes: Map<string, Node> = new Map();
+  let debugPlayerStart: PIXI.Point | null = null;
 
   // Get all the spaces above a platform that you can stand on
   for (let y = 0; y < levelPlan.length; y++) {
@@ -15,6 +16,9 @@ export function getLevelNodes(levelPlan: string[]) {
       if (levelPlan[y][x] === 'P') {
         const traversible = y === 0 || [' ', 'X', 'F'].includes(levelPlan[y - 1][x]);
         if (traversible) {
+          if (levelPlan[y - 1]?.[x] === 'X') {
+            debugPlayerStart = new PIXI.Point(x, y - 1);
+          }
           const node = new Node(new PIXI.Point(x, y - 1));
           const key = `${x},${y - 1}`;
           nodes.set(key, node);
@@ -28,8 +32,8 @@ export function getLevelNodes(levelPlan: string[]) {
   //   // console.log('node', node.point.x, node.point.y);
   //   getNeighbors(node, nodes, levelPlan);
   // }
-  getNeighbors(nodes.get(getNodeKey(19, 23))!, nodes, levelPlan);
-  const curNodes = nodes.get(getNodeKey(19, 23))!;
+  getNeighbors(nodes.get(getNodeKey(debugPlayerStart!.x, debugPlayerStart!.y))!, nodes, levelPlan);
+  const curNodes = nodes.get(getNodeKey(debugPlayerStart!.x, debugPlayerStart!.y))!;
   // const tempNodes = new Map<string, Node>();
   // for (const curNode of curNodes.neighbors) {
   //   tempNodes.set(getNodeKey(curNode.point.x, ), curNode);
@@ -39,9 +43,7 @@ export function getLevelNodes(levelPlan: string[]) {
   return { nodes, neighbors: curNodes.neighbors }
 }
 
-function getNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: string[]) {
-  const tileSize = App.config.tileSize;
-
+export function getNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: string[]) {
   // check left and right (walking)
   // neighbor is the tile above the platform that's valid
   const left = nodes.get(getNodeKey(node.point.x - 1, node.point.y));
@@ -56,30 +58,64 @@ function getNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: string[])
   // check can jump (nothing directly above)
   if (levelPlan[node.point.y - 1][node.point.x] !== ' ') return;
 
-  const h = Math.floor((App.config.M * App.config.M) / (4 * App.config.J) / tileSize);
-  // console.log('h', h);
+  // if we can jump, split checks into three parts with no overlap
+  // center rectangle and two parabolic arcs on the left and right
 
-  // check jumps left under the parabola
-  console.log('xLoopfrom', node.point.x - 20, 'to', node.point.x - (App.config.M / tileSize) / 2);
-  for (let x = node.point.x - 20; x <= node.point.x - (App.config.M / tileSize) / 2; x++) {
-    const inputX = (x - node.point.x) * tileSize;
-    const yMax = Math.floor((inputX / App.config.J) * (inputX - App.config.M) / tileSize);
-    console.log('actualX', x);
-    console.log('yMax', yMax, 'inputX', inputX);
-    console.log('yLoopfrom', node.point.y - yMax, 'to', node.point.y + 20);
-    for (let y = node.point.y - yMax; y <= node.point.y + 20; y++) {
-      const nodeUnderParabola = nodes.get(getNodeKey(x + 1, y));
-      if (nodeUnderParabola) {
-        node.addNeighbor(getNodeKey(x + 1, y), 1);
-        console.log('nodeUnderParabola', nodeUnderParabola.point.x, nodeUnderParabola.point.y);
+  // check center rectangle
+  const leftRectBound = node.point.x - Math.floor(App.config.M / 2);
+  const rightRectBound = node.point.x + Math.floor(App.config.M / 2);
+  const maxJumpHeight = Math.floor((App.config.M * App.config.M) / (4 * App.config.J));
+  for (let x = leftRectBound; x <= rightRectBound; x++) {
+    for (let y = node.point.y - maxJumpHeight; y <= node.point.y + 20; y++) {
+      const nodeInCenterRect = nodes.get(getNodeKey(x, y));
+      if (nodeInCenterRect) {
+        node.addNeighbor(getNodeKey(x, y), 2);
         break;
       }
     }
   }
 
+  // check left and right parabolas
+  // we can do this simultaneously since the parabola is symmetric
+  // we are only checking X values to the left of the center rectangle
+  // with a max range of roughly 1.5 * the flat jump distance (App.config.M)
+  for (let x = Math.floor(App.config.M / 2); x <= Math.floor(App.config.M * 1.5); x++) {
+    // track if x values have been hit
+    let leftHit = false;
+    let rightHit = false;
+
+    const leftX = node.point.x - x;
+    const rightX = node.point.x + x;
+    const yMax = node.point.y + Math.floor((x / App.config.J) * (x - App.config.M));
+    // check if the node is within the parabola up to 20 tiles below the tile
+    console.log('leftX =', leftX, 'rightX =', rightX, 'yMax =', yMax);
+    for (let y = yMax; y <= yMax + 20; y++) {
+      console.log(`(${leftX}, ${y})${leftHit ? '-X' : ''}, (${rightX}, ${y})${rightHit ? '-X' : ''}`);
+
+      if (!leftHit) {
+        const nodeUnderParabolaLeft = nodes.get(getNodeKey(leftX, y));
+        if (nodeUnderParabolaLeft) {
+          node.addNeighbor(getNodeKey(leftX, y), 2);
+          leftHit = true;
+          console.log('leftHit', leftX, y);
+        }
+      }
+
+      if (!rightHit) {
+        const nodeUnderParabolaRight = nodes.get(getNodeKey(rightX, y));
+        if (nodeUnderParabolaRight) {
+          node.addNeighbor(getNodeKey(rightX, y), 2);
+          rightHit = true;
+          console.log('rightHit', rightX, y);
+        }
+      }
+
+      // if both hits are found, break
+      if (leftHit && rightHit) {
+        break;
+      }
+    }
+  }
+  //*/
+
 }
-
-
-
-
-

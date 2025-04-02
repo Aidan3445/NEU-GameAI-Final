@@ -95,6 +95,14 @@ export class Platform {
       sprite.y = this.body.position.y - (this.gridRect.height / 2) * App.config.tileSize + yIndex * App.config.tileSize;
     });
 
+    this.cellDebugText.forEach((text, index) => {
+      const xIndex = index % this.gridRect.width;
+      const yIndex = Math.floor(index / this.gridRect.width);
+
+      text.x = this.body.position.x - (this.gridRect.width / 2) * App.config.tileSize + xIndex * App.config.tileSize + 16;
+      text.y = this.body.position.y - (this.gridRect.height / 2) * App.config.tileSize + yIndex * App.config.tileSize + 16;
+    });
+
     this.debugText.text = `${this.body.position.x.toFixed(2)}\n${this.body.position.y.toFixed(2)}`;
   }
 

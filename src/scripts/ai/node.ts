@@ -11,7 +11,8 @@ export class Node {
   }
 
   addNeighbor(neighborKey: string, weight: number) {
-    this.neighbors.set(neighborKey, weight);
+    const existingWeight = this.neighbors.get(neighborKey);
+    this.neighbors.set(neighborKey, Math.min(weight, existingWeight ?? Infinity));
   }
 
   getNeighbors() {

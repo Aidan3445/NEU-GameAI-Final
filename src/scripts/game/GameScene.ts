@@ -213,20 +213,10 @@ export class GameScene extends Scene {
 
     this.camera.apply(this.flag.body);
     this.flag.update();
-
-    for (const [key, _] of this.neighbors) {
-      const frame = new PIXI.Graphics();
-      frame.rect(this.nodes.get(key)!.point.x * App.config.tileSize,
-        this.nodes.get(key)!.point.y * App.config.tileSize,
-        App.config.tileSize,
-        App.config.tileSize);
-      frame.stroke(0xff00ff);
-      this.camera.bg.container.addChild(frame);
-    }
   }
 }
 
-const level = [
+export const level = [
   "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
   "P                                                          P",
   "P                                                          P",
@@ -278,7 +268,7 @@ const level = [
   "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
 ];
 
-const oldTestLevel = [
+export const oldTestLevel = [
   "                                                                                                                         ",
   "                                                                                                                         ",
   "                                                                                                                         ",
@@ -295,18 +285,18 @@ const oldTestLevel = [
   "                                                                                                                         ",
   "                                                                                                                         ",
   "                                                                                                                         ",
-  "              P                                                                                                          ",
-  "              P                                                                                                          ",
-  "              P                                                                                                          ",
-  "PPPPP         PP                                                                                                         ",
-  "               P                                                                                                         ",
-  "  X             P                                                                                                        ",
-  "PPPPP            P      P                                                                                                ",
   "                                                                                                                         ",
+  "                                                                                                                         ",
+  "F                                                                                                                        ",
+  "PPPPP    PP                                                                                                              ",
+  "          P                 P                                                                                            ",
+  "           P                PP                                                                                           ",
+  "PPPPP        P          P   P  P                                                                                         ",
+  "               X                                                                                                         ",
   "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
 ]
 
-const testLevel = [
+export const testLevel = [
   "                                 ",
   "                                 ",
   "                                 ",
