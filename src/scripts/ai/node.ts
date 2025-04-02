@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js';
 
 export class Node {
   point: PIXI.Point;
-  neighbors: Map<Node, number> = new Map();
+  neighbors: Map<string, number> = new Map();
   visited: boolean = false;
   parent: Node | null = null;
 
@@ -10,8 +10,8 @@ export class Node {
     this.point = point;
   }
 
-  addNeighbor(neighbor: Node, weight: number) {
-    this.neighbors.set(neighbor, weight);
+  addNeighbor(neighborKey: string, weight: number) {
+    this.neighbors.set(neighborKey, weight);
   }
 
   getNeighbors() {

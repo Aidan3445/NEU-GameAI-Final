@@ -8,6 +8,7 @@ import { Camera } from './Camera';
 import { buildLevel } from '../system/LevelBuilder';
 import { Flag } from './Flag';
 import { getLevelNodes } from '../ai/preprocess';
+import { Node } from '../ai/node';
 
 export class GameScene extends Scene {
   camera!: Camera;
@@ -15,9 +16,13 @@ export class GameScene extends Scene {
   playerSpawn!: PIXI.Point;
   platforms!: Platform[];
   flag!: Flag;
+  nodes!: Map<string, Node>;
+  neighbors!: Map<string, number>;
 
   create() {
-    getLevelNodes(level);
+    const {nodes, neighbors} = getLevelNodes(oldTestLevel);
+    this.nodes = nodes;
+    this.neighbors = neighbors; 
 
     const { playerStart, platforms, levelRect, flagPoint } = buildLevel(oldTestLevel);
     this.createCamera(levelRect);
@@ -208,6 +213,13 @@ export class GameScene extends Scene {
 
     this.camera.apply(this.flag.body);
     this.flag.update();
+
+    for (const [key, node] of this.neighbors) {
+      const circle = new PIXI.Graphics();
+      circle.circle(this.nodes.get(key)!.point.x * App.config.tileSize, this.nodes.get(key)!.point.y * App.config.tileSize, 1);
+      circle.fill(0x00ffff);
+      this.camera.bg.container.addChild(circle);
+    }
   }
 }
 
