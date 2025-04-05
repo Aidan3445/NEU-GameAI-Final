@@ -7,6 +7,7 @@ import { Platform } from './Platform';
 import { Camera } from './Camera';
 import { buildLevel } from '../system/LevelBuilder';
 import { Flag } from './Flag';
+import { Adversary } from '../ai/Adversary';
 
 export class GameScene extends Scene {
   camera!: Camera;
@@ -14,6 +15,15 @@ export class GameScene extends Scene {
   playerSpawn!: PIXI.Point;
   platforms!: Platform[];
   flag!: Flag;
+  adversary!: Adversary;
+  gameStarted: boolean = false;
+  
+  // Stage of the game
+  // 0: AI is moving to the flag
+  // 1: Player's turn to move
+  gameStage: number = 0;
+
+  startText: PIXI.Text | null = null;
 
   create() {
     const { playerStart, platforms, levelRect, flagPoint } = buildLevel(level);
@@ -22,13 +32,15 @@ export class GameScene extends Scene {
     this.playerSpawn = playerStart;
     this.createPlayer();
     this.createFlag(flagPoint);
-
     this.createPlatforms(platforms);
+    this.createAdversary(playerStart, flagPoint);
 
     this.physicsEvents();
     this.keyEvents();
 
+    // Initially place the player but don't allow movement yet
     this.spawn(this.playerSpawn);
+    this.disablePlayerMovement();
   }
 
   createCamera(levelRect: PIXI.Rectangle) {
@@ -60,6 +72,12 @@ export class GameScene extends Scene {
     });
   }
 
+  createAdversary(start: PIXI.Point, target: PIXI.Point) {
+    this.adversary = new Adversary(start, target, this.camera.bg.container);
+    this.container.addChild(this.adversary.container);
+    this.adversary.container.zIndex = 90;
+  }
+
   // spawn the player at a specific grid position
   // also sets a spawn point for the player
   spawn(position: PIXI.Point) {
@@ -73,25 +91,43 @@ export class GameScene extends Scene {
     Matter.Body.setPosition(this.player.body, position);
   }
 
+  // Disable player movement
+  disablePlayerMovement() {
+    App.controllerInput.left = false;
+    App.controllerInput.right = false;
+    App.controllerInput.jump = false;
+    App.controllerInput.drop = false;
+    this.gameStarted = false;
+  }
+
+  // Enable player movement
+  enablePlayerMovement() {
+    this.gameStarted = true;
+    this.gameStage = 1;
+  }
+
   physicsEvents() {
     Matter.Events.on(App.physics, 'beforeUpdate',
       () => {
-        if (App.controllerInput.drop && !this.player.canJump) {
-          this.player.drop();
-          App.controllerInput.drop = false;
-        } else {
-          if (App.controllerInput.left) this.player.move(-1);
-          if (App.controllerInput.right) this.player.move(1);
-          if (App.controllerInput.jump && this.player.canJump) {
-            this.player.jump();
+        // Only allow player movement if the game has started
+        if (this.gameStage === 1) {
+          if (App.controllerInput.drop && !this.player.canJump) {
+            this.player.drop();
+            App.controllerInput.drop = false;
+          } else {
+            if (App.controllerInput.left) this.player.move(-1);
+            if (App.controllerInput.right) this.player.move(1);
+            if (App.controllerInput.jump && this.player.canJump) {
+              this.player.jump();
+            }
           }
-        }
 
-        if (this.player.body.speed > App.config.playerMaxSpeed) {
-          Matter.Body.setVelocity(this.player.body, {
-            x: App.config.playerMaxSpeed * Math.sign(this.player.velocity.x),
-            y: Math.min(this.player.velocity.y, App.config.playerMaxFallSpeed)
-          });
+          if (this.player.body.speed > App.config.playerMaxSpeed) {
+            Matter.Body.setVelocity(this.player.body, {
+              x: App.config.playerMaxSpeed * Math.sign(this.player.velocity.x),
+              y: Math.min(this.player.velocity.y, App.config.playerMaxFallSpeed)
+            });
+          }
         }
       });
 
@@ -105,7 +141,7 @@ export class GameScene extends Scene {
           const flag = colliders.find(body => body.id === this.flag?.body.id);
           if (player && flag) {
             console.log("Player reached the flag");
-            this.spawn(this.playerSpawn);
+            this.resetGame();
           }
 
           if (player && platform && pair.collision.normal.y <= 0) {
@@ -131,53 +167,64 @@ export class GameScene extends Scene {
 
   keyEvents() {
     window.addEventListener("keydown", (event) => {
-      switch (event.key) {
-        case "ArrowLeft":
-        case "a":
-          App.controllerInput.left = true;
-          break;
-        case "ArrowRight":
-        case "d":
-          App.controllerInput.right = true;
-          break;
-        case "ArrowUp":
-        case "w":
-        case " ":
-          App.controllerInput.jump = true;
-          break;
-        case "ArrowDown":
-        case "s":
-          App.controllerInput.drop = true;
-          break;
+      // Start the game when any key is pressed if we're in stage 0
+      if (this.gameStage === 0 && this.adversary.reachedEnd && !this.gameStarted) {
+        this.enablePlayerMovement();
+      }
+
+      // Only register key events if the game has started
+      if (this.gameStarted) {
+        switch (event.key) {
+          case "ArrowLeft":
+          case "a":
+            App.controllerInput.left = true;
+            break;
+          case "ArrowRight":
+          case "d":
+            App.controllerInput.right = true;
+            break;
+          case "ArrowUp":
+          case "w":
+          case " ":
+            App.controllerInput.jump = true;
+            break;
+          case "ArrowDown":
+          case "s":
+            App.controllerInput.drop = true;
+            break;
+        }
       }
     });
 
     window.addEventListener("keyup", (event) => {
-      switch (event.key) {
-        case "ArrowLeft":
-        case "a":
-          App.controllerInput.left = false;
-          break;
-        case "ArrowRight":
-        case "d":
-          App.controllerInput.right = false;
-          break;
-        case "ArrowUp":
-        case "w":
-        case " ":
-          App.controllerInput.jump = false;
-          break;
-        case "ArrowDown":
-        case "s":
-          App.controllerInput.drop = false;
-          break;
-      }
+      // Only register key events if the game has started
+      if (this.gameStarted) {
+        switch (event.key) {
+          case "ArrowLeft":
+          case "a":
+            App.controllerInput.left = false;
+            break;
+          case "ArrowRight":
+          case "d":
+            App.controllerInput.right = false;
+            break;
+          case "ArrowUp":
+          case "w":
+          case " ":
+            App.controllerInput.jump = false;
+            break;
+          case "ArrowDown":
+          case "s":
+            App.controllerInput.drop = false;
+            break;
+        }
 
-      if (!App.controllerInput.left && !App.controllerInput.right && this.player.canJump) {
-        Matter.Body.setVelocity(this.player.body, {
-          x: 0,
-          y: this.player.velocity.y
-        });
+        if (!App.controllerInput.left && !App.controllerInput.right && this.player.canJump) {
+          Matter.Body.setVelocity(this.player.body, {
+            x: 0,
+            y: this.player.velocity.y
+          });
+        }
       }
     });
   }
@@ -192,7 +239,12 @@ export class GameScene extends Scene {
 
     super.update(dt)
 
-    this.camera.update(this.player.body);
+    // Update the camera to follow the player or adversary based on game stage
+    if (this.gameStage === 0) {
+      this.camera.update(this.adversary.body);
+    } else {
+      this.camera.update(this.player.body);
+    }
 
     this.platforms.forEach((platform) => {
       this.camera.apply(platform.body);
@@ -204,6 +256,64 @@ export class GameScene extends Scene {
 
     this.camera.apply(this.flag.body);
     this.flag.update();
+
+    // Update the adversary
+    this.camera.apply(this.adversary.body);
+    this.adversary.update();
+
+    // Check if adversary has completed its path
+    if (this.gameStage === 0 && this.adversary.reachedEnd && !this.startText) {
+      // Show message to press any key to start
+      this.startText = new PIXI.Text({
+        text: "AI has shown the way! Press any key to start playing",
+        style: {
+          fontFamily: "Arial",
+          fontSize: 24,
+          fill: 0xffffff,
+          align: "center"
+        }
+      });
+      this.startText.anchor.set(0.5);
+      this.startText.position.set(
+        window.innerWidth / 2,
+        window.innerHeight / 2 - 100
+      );
+      this.container.addChild(this.startText);
+
+      // Remove the text after 3 seconds
+      setTimeout(() => {
+        if (this.startText && this.container.children.includes(this.startText)) {
+          this.container.removeChild(this.startText);
+          this.startText = null;
+        }
+      }, 3000);
+    }
+  }
+
+  resetGame() {
+    // Reset player position
+    this.spawn(this.playerSpawn);
+    
+    // Reset game stage
+    this.gameStage = 0;
+    this.disablePlayerMovement();
+    
+    // Remove any existing messages
+    if (this.startText) {
+      this.container.removeChild(this.startText);
+      this.startText = null;
+    }
+    
+    // Reset adversary
+    if (this.adversary) {
+      this.adversary.destroy();
+    }
+    
+    // Create a new adversary
+    this.createAdversary(this.playerSpawn, new PIXI.Point(
+      this.flag.body.position.x / App.config.tileSize,
+      this.flag.body.position.y / App.config.tileSize
+    ));
   }
 }
 
@@ -245,7 +355,6 @@ export const level = [
   "P        SSS                  PP                           P",
   "P    PPPPPPPP                 PPP                          P",
   "P                             PPPP                         P",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
   "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
   "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
   "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
