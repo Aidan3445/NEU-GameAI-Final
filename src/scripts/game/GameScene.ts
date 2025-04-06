@@ -7,6 +7,7 @@ import { Platform } from './Platform';
 import { Camera } from './Camera';
 import { buildLevel } from '../system/LevelBuilder';
 import { Flag } from './Flag';
+import { Config } from './Config';
 
 export class GameScene extends Scene {
   camera!: Camera;
@@ -16,7 +17,7 @@ export class GameScene extends Scene {
   flag!: Flag;
 
   create() {
-    const { playerStart, platforms, levelRect, flagPoint } = buildLevel(level);
+    const { playerStart, platforms, levelRect, flagPoint } = buildLevel(joeyTestLevel);
     this.createCamera(levelRect);
 
     this.playerSpawn = playerStart;
@@ -308,3 +309,29 @@ export const testLevel = [
   "P  P                             ",
 ];
 
+export const joeyTestLevel = [
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "                                                ",
+  "F                                               ",
+  "PPPPP    PP                                     ",
+  "          P                 P                   ",
+  "   X        P                PP              F  ",
+  "PPPPP        P          P   P  PPP           P  ",
+  "                                                ",
+]

@@ -1,6 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { Node } from './node';
 import { App } from '../system/App';
+import  { canMake2SegmentJump } from './jumpArc';
 
 const traversibleChars = [' ', 'X', 'F', 'S'];
 // remove S when we implement spikes
@@ -10,6 +11,7 @@ export function getNodeKey(x: number, y: number) {
 }
 
 export function getLevelNodes(levelPlan: string[]) {
+  // nodes : key_string -> Node
   const nodes: Map<string, Node> = new Map();
   let debugPlayerStart: PIXI.Point | null = null;
 
@@ -64,7 +66,14 @@ export function setNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: st
     for (let y = node.point.y - maxJumpHeight; y <= node.point.y + 20; y++) {
       if (x === node.point.x && y == node.point.y) continue; // skip the node itself
       const nodeInCenterRect = nodes.get(getNodeKey(x, y));
-      if (nodeInCenterRect) {
+      const arcClear = canMake2SegmentJump(
+        node.point.x, node.point.y,
+        x, y,
+        { M: App.config.M, J: App.config.J },
+        levelPlan
+      )
+
+      if (nodeInCenterRect && arcClear) {
         node.addNeighbor(getNodeKey(x, y), 2);
         break;
       }
@@ -90,7 +99,14 @@ export function setNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: st
 
       if (!leftHit) {
         const nodeUnderParabolaLeft = nodes.get(getNodeKey(leftX, y));
-        if (nodeUnderParabolaLeft) {
+        const arcClear = canMake2SegmentJump(
+            node.point.x, node.point.y,
+            leftX, y,
+            { M: App.config.M, J: App.config.J },
+            levelPlan
+          )
+
+        if (nodeUnderParabolaLeft && arcClear) {
           node.addNeighbor(getNodeKey(leftX, y), 2);
           leftHit = true;
           // console.log('leftHit', leftX, y);
@@ -99,7 +115,14 @@ export function setNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: st
 
       if (!rightHit) {
         const nodeUnderParabolaRight = nodes.get(getNodeKey(rightX, y));
-        if (nodeUnderParabolaRight) {
+        const arcClear = canMake2SegmentJump(
+          node.point.x, node.point.y,
+          rightX, y,
+          { M: App.config.M, J: App.config.J },
+          levelPlan
+        )
+
+        if (nodeUnderParabolaRight && arcClear) {
           node.addNeighbor(getNodeKey(rightX, y), 2);
           rightHit = true;
           // console.log('rightHit', rightX, y);

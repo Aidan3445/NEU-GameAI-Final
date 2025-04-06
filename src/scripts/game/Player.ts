@@ -2,7 +2,8 @@ import * as PIXI from "pixi.js";
 import { App } from "../system/App";
 import Matter from "matter-js";
 import { getLevelNodes, getNodeKey } from "../ai/preprocess";
-import { level } from "./GameScene";
+import { joeyTestLevel, level } from "./GameScene";
+import { getArcApex } from '../ai/jumpArc';
 
 export class Player {
   container: PIXI.Container;
@@ -201,13 +202,22 @@ export class Player {
       this.backgroundContainer.removeChild(rect);
     });
     this.neighborRects = [];
-    const nodes = getLevelNodes(level);
+    const nodes = getLevelNodes(joeyTestLevel);
+    // for (const [key, _] of nodes) {
+    //   console.log(nodes.point.x)
+    // }
 
+    // is the player node key a valid space?
     const nodeKey = getNodeKey(
       Math.floor(this.body.position.x / App.config.tileSize),
       Math.floor(this.body.position.y / App.config.tileSize));
+    // console.log(Math.floor(this.body.position.x / App.config.tileSize), Math.floor(this.body.position.y / App.config.tileSize))
     const node = nodes.get(nodeKey);
-    if (!node) return;
+
+    if (!node) {
+      // console.log('NOT IN A VALID SPACE')
+      return;
+    }
     const neighbors = node.getNeighbors();
     for (const [key, _] of neighbors) {
       const frame = new PIXI.Graphics();
@@ -220,6 +230,18 @@ export class Player {
 
       this.neighborRects.push(frame);
     }
+
+    console.log(Math.floor(this.body.position.x/32), Math.floor(this.body.position.y/32));
+    const arc = getArcApex(Math.floor(this.body.position.x/32), Math.floor(this.body.position.y/32), 
+    Math.floor(this.body.position.x/32)+5, { M:App.config.M, J:App.config.J});
+    const frame = new PIXI.Graphics();
+    frame.rect( arc.x * App.config.tileSize,
+      arc.y * App.config.tileSize,
+      App.config.tileSize,
+      App.config.tileSize);
+    frame.stroke(0xff00ff);
+    this.backgroundContainer.addChild(frame);
+    this.neighborRects.push(frame);
   }
 
   destroy() {
@@ -227,7 +249,6 @@ export class Player {
     this.container.destroy();
   }
 }
-
 
 // explored on desmos: https://www.desmos.com/calculator/pv5ycumls5
 // debug left and right parabola arc based on config
