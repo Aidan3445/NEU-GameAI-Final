@@ -18,4 +18,8 @@ export class Node {
   getNeighbors() {
     return this.neighbors;
   }
+
+  getNeighborWeight(neighborKey: string) {
+    return this.neighbors.get(neighborKey) ?? Infinity;
+  }
 }

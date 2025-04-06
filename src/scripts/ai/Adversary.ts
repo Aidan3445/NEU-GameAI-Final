@@ -13,6 +13,7 @@ export class Adversary {
   path: Node[] = [];
   currentPathIndex: number = 0;
   pathGraphics: PIXI.Graphics;
+  canMove: boolean = true;
   moveTimer: number = 0;
   moveDelay: number = 30; // frames between moves
   reachedEnd: boolean = false;

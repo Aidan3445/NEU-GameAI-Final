@@ -8,6 +8,7 @@ import { Camera } from './Camera';
 import { buildLevel } from '../system/LevelBuilder';
 import { Flag } from './Flag';
 import { Adversary } from '../ai/Adversary';
+import { getLevelNodes } from '../ai/preprocess';
 
 export class GameScene extends Scene {
   camera!: Camera;
@@ -17,7 +18,7 @@ export class GameScene extends Scene {
   flag!: Flag;
   adversary!: Adversary;
   gameStarted: boolean = false;
-  
+
   // Stage of the game
   // 0: AI is moving to the flag
   // 1: Player's turn to move
@@ -27,6 +28,8 @@ export class GameScene extends Scene {
 
   create() {
     const { playerStart, platforms, levelRect, flagPoint } = buildLevel(level);
+    getLevelNodes(level, true);
+
     this.createCamera(levelRect);
 
     this.playerSpawn = playerStart;
@@ -77,7 +80,9 @@ export class GameScene extends Scene {
   }
 
   createAdversary(start: PIXI.Point, target: PIXI.Point) {
-    this.adversary = new Adversary(start, target, this.camera.bg.container);
+    // adversary starts one tile left
+    const advStart = new PIXI.Point(start.x - 1, start.y);
+    this.adversary = new Adversary(advStart, target, this.camera.bg.container);
     this.container.addChild(this.adversary.container);
     this.adversary.container.zIndex = 90;
   }
@@ -111,6 +116,10 @@ export class GameScene extends Scene {
   }
 
   physicsEvents() {
+    // allow player and adversary to pass through each other
+    this.player.body.collisionFilter.group = -1;
+    this.adversary.body.collisionFilter.group = -1;
+
     Matter.Events.on(App.physics, 'beforeUpdate',
       () => {
         // Only allow player movement if the game has started
@@ -141,6 +150,7 @@ export class GameScene extends Scene {
           const colliders = [pair.bodyA, pair.bodyB];
           const player = colliders.find(body => body.id === this.player?.body.id);
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
+          const adversary = colliders.find(body => body.id === this.adversary?.body.id);
 
           const flag = colliders.find(body => body.id === this.flag?.body.id);
           if (player && flag) {
@@ -316,22 +326,22 @@ export class GameScene extends Scene {
   resetGame() {
     // Reset player position
     this.spawn(this.playerSpawn);
-    
+
     // Reset game stage
     this.gameStage = 0;
     this.disablePlayerMovement();
-    
+
     // Remove any existing messages
     if (this.startText) {
       this.container.removeChild(this.startText);
       this.startText = null;
     }
-    
+
     // Reset adversary
     if (this.adversary) {
       this.adversary.destroy();
     }
-    
+
     // Create a new adversary
     this.createAdversary(this.playerSpawn, new PIXI.Point(
       this.flag.body.position.x / App.config.tileSize,
@@ -341,7 +351,7 @@ export class GameScene extends Scene {
 }
 
 export const level = [
-  "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "P                                                          P",
   "P                                                          P",
   "P                                                          P",
   "P                                                          P",
@@ -367,10 +377,10 @@ export const level = [
   "PPPP                                                PPPPPPPP",
   "P      PPPP             SSS         PPPPPP                 P",
   "P                                                          P",
-  "P                            P                             P",
-  "P                            P                             P",
+  "P                                                          P",
+  "P                                                          P",
   "P         PP                 P                PPPPPPPP     P",
-  "P        PPPP                P                             P",
+  "P        PPPP               PP                             P",
   "P     PPPPPPPPPPP            P                             P",
   "P                            P                             P",
   "P                     X      P                             P",
@@ -419,24 +429,24 @@ export const oldTestLevel = [
   "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
 ]
 
-export const testLevel = [
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "                                 ",
-  "X  P                             ",
-  "P  P                             ",
+export const rlevel = [
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                          F        ",
+  "                        PPP        ",
+  "                 P                 ",
+  "PPPPP                              ",
+  "                   P               ",
+  "              P                    ",
+  " X   P                             ",
+  "PP   P   P  P                      ",
 ];
 
