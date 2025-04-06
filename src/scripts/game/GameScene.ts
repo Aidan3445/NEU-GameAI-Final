@@ -150,9 +150,8 @@ export class GameScene extends Scene {
           const colliders = [pair.bodyA, pair.bodyB];
           const player = colliders.find(body => body.id === this.player?.body.id);
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
-          const adversary = colliders.find(body => body.id === this.adversary?.body.id);
-
           const flag = colliders.find(body => body.id === this.flag?.body.id);
+          
           if (player && flag) {
             console.log("Player reached the flag");
             this.resetGame();
@@ -371,7 +370,7 @@ export const level = [
   "PPPP        PPPPPPPP                     P                 P",
   "P                         PPPPPP          P             PPPP",
   "P                                                          P",
-  "PPPP                                 PP PPP      PPPP      P",
+  "PPPP                                  P PPP      PPPP      P", 
   "P                                                          P",
   "P             PPPPPPPPP                                    P",
   "PPPP                                                PPPPPPPP",

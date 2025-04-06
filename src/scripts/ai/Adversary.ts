@@ -29,6 +29,9 @@ export class Adversary {
   jumpCooldown: boolean = false;
   contacts: Matter.Vector[] = [];
 
+  distanceAway: number = 0;
+  inAir: boolean = false;
+
 
   constructor(start: PIXI.Point, target: PIXI.Point, backgroundContainer: PIXI.Container) {
     this.container = new PIXI.Container();
@@ -212,6 +215,29 @@ export class Adversary {
     this.moving = true;
   }
 
+  moveX() {
+    const fraction = 0.05 * this.distanceAway;
+    
+    // Current position
+    const currentX = this.body.position.x;
+    const currentY = this.body.position.y;
+
+    // Lerp to newX 
+    const newX = currentX + fraction;
+    let clampedX = Math.min(newX, this.currentTarget.x);
+    if (fraction < 0) {
+      clampedX = Math.max(newX, this.currentTarget.x);
+    }
+
+    // Directly set the body's new position
+    Matter.Body.setPosition(this.body, {
+      x: clampedX,
+      y: currentY
+    });
+  
+    // This bypasses "real" physics motion (no momentum, collisions, friction, etc.)
+  }
+  
 
   jump() {
     if (this.canJump && !this.jumpCooldown) {
@@ -262,42 +288,26 @@ export class Adversary {
   update() {
     // A threshold for "close enough to the target."
     // Adjust based on tileSize, sprite size, etc.
-    const threshold = 60;
+    const threshold = 42;
     // 1. Calculate distance to currentTarget
-    const dx = this.currentTarget.x - this.body.position.x;
-    const dy = this.currentTarget.y - this.body.position.y;
-    const distance = Math.hypot(dx, dy);
-    if (distance < threshold) {
-      // We arrived at the currentTarget
-      this.currentlyMoving = false;
+    const AIx = this.body.position.x;
+    const AIy = this.body.position.y + App.config.tileSize / 2; 
+
+    const dx = this.currentTarget.x - AIx;
+    const dy = this.currentTarget.y - AIy;
+    const distance = Math.hypot(dx, dy); 
+    console.log(dx, dy, distance, this.currentTarget.x, this.currentTarget.y);
+    if (distance < threshold && this.canJump == true) {
+      // We arrived at the currentTarget 
       console.log('Adversary reached the target point', this.currentTarget.x, this.currentTarget.y);
-    }
-
-  
-    if (this.currentlyMoving) {
-      // 2. Apply horizontal movement
-      //    You can tweak "speedFactor" for how strong the horizontal force is
-      const speedFactor = 0.02; 
-      const xDir = (dx > 0) ? 1 : -1;
-      this.move(xDir * speedFactor);
-
-      // 3. Optionally decide when to jump
-      //    For example, if the target is above us, or we need to climb onto a platform
-      //    This is your game logic: maybe jump only if dy < some negative number?
-      if (dy < -App.config.tileSize * 0.5 && this.canJump && !this.jumpCooldown) {
-        this.jump();
-      }
-      // this.jump();
-    } else {
-      // 4. Pick the next path node if there is one
       if (this.path.length > 0 && this.currentPathIndex < this.path.length && !this.reachedEnd) {
         const targetNode = this.path[this.currentPathIndex];
         const targetX = targetNode.point.x * App.config.tileSize + App.config.tileSize / 2;
         const targetY = targetNode.point.y * App.config.tileSize + App.config.tileSize / 2;
   
         // Assign currentTarget and mark that we are moving
-        this.currentlyMoving = true;
         this.currentTarget = new PIXI.Point(targetX, targetY); 
+        this.distanceAway = this.currentTarget.x - this.body.position.x;
   
         // Move to the next point in the path
         this.currentPathIndex++;
@@ -307,6 +317,11 @@ export class Adversary {
           this.reachedEnd = true;
           console.log('Adversary reached the flag!');
         }
+      }
+    } else {
+      this.jump()
+      if (!this.canJump) {
+        this.moveX()
       }
     }
   
@@ -323,6 +338,7 @@ export class Adversary {
     this.sprite.position = this.body.position;
   }
   
+
   destroy() {
     Matter.Composite.remove(App.physics.world, this.body);
     this.container.removeChild(this.sprite);
