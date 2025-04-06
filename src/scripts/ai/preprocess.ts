@@ -38,7 +38,10 @@ export function getLevelNodes(levelPlan: string[]) {
   return nodes;
 }
 
+
+
 export function setNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: string[]) {
+  const MAX_JUMP_HEIGHT = Math.floor((App.config.M * App.config.M) / (4 * App.config.J));
   // check left and right (walking)
   // neighbor is the tile above the platform that's valid
   const left = nodes.get(getNodeKey(node.point.x - 1, node.point.y));
@@ -59,9 +62,8 @@ export function setNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: st
   // check center rectangle
   const leftRectBound = node.point.x - Math.floor(App.config.M / 2);
   const rightRectBound = node.point.x + Math.floor(App.config.M / 2);
-  const maxJumpHeight = Math.floor((App.config.M * App.config.M) / (4 * App.config.J));
   for (let x = leftRectBound; x <= rightRectBound; x++) {
-    for (let y = node.point.y - maxJumpHeight; y <= node.point.y + 20; y++) {
+    for (let y = node.point.y - MAX_JUMP_HEIGHT; y <= node.point.y + 20; y++) {
       if (x === node.point.x && y == node.point.y) continue; // skip the node itself
       const nodeInCenterRect = nodes.get(getNodeKey(x, y));
       if (nodeInCenterRect) {
@@ -113,5 +115,47 @@ export function setNeighbors(node: Node, nodes: Map<string, Node>, levelPlan: st
     }
   }
   //*/
+}
 
+/*
+export function getArcApex(
+xStart: number,
+yStart: number,
+xEnd: number,
+): { x: number; y: number } {
+// Midway in x space
+const xMid = Math.floor((xStart + xEnd) / 2);
+
+// dx is relative to xStart
+const dx = xMid - xStart; // can be negative if xMid < xStart
+// same formula as your code
+const yMid = yStart + MAX_JUMP_HEIGHT;
+// console.log(yOffset)
+// const yMid = yStart + config.M;
+
+return { x: xMid, y: yMid };
+}
+//*/
+
+function estimateArc(
+  x: number, // input
+  x1: number, // startX
+  y1: number, // startY
+  x2: number, // endX
+  y2: number, // endY
+  J: number, // max jump height
+): number {
+  const ANumerator = 2 * (y2 - (3 * y1) - (2 * J));
+  const ADenominator = (x2 - x1) ** 2;
+  const A = ANumerator / ADenominator;
+
+  const BNumerator = 4 * (J + y1) - y2 + y1;
+  const BDenominator = (x2 - x1);
+  const B = BNumerator / BDenominator;
+
+  const C = y1;
+
+  const input = x - x1;
+
+  return A * (input ** 2) + (B * input) + C;
 }
