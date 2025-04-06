@@ -323,60 +323,6 @@ export class Adversary {
     this.sprite.position = this.body.position;
   }
   
-
-  // update() {
-  //   const threshold = 30; // <--- Tweak this “arrival threshold” as needed
- 
-  //   if (this.currentlyMoving) {
-  //     console.log('Adversary is moving to target point', this.currentTarget.x, this.currentTarget.y);
-  //     const distance = Math.hypot(this.currentTarget.x - this.body.position.x, this.currentTarget.y - this.body.position.y);
-  //     if (distance < threshold) {
-  //       this.currentlyMoving = false;
-  //       console.log('Adversary reached the target point', this.currentTarget.x, this.currentTarget.y);
-  //       console.log('Adversary position:', this.body.position.x, this.body.position.y);
-  //     } else { 
-
-  //       let speed = .02;
-  //       const direction = this.currentTarget.x - this.body.position.x;
-  //       if (direction < 0) {
-  //         speed = -.02;  
-  //       }
-  //       this.jump();
-        
-  //       this.move(speed);
-  //       // Rotate the sprite to face the direction of movement
-  //       // this.sprite.rotation = angle;
-  //     }
-  //   } else {
-  //     // Move along the path
-  //     if (this.path.length > 0 && this.currentPathIndex < this.path.length && !this.reachedEnd) {
-  //       const targetNode = this.path[this.currentPathIndex];
-  //       const targetX = targetNode.point.x * App.config.tileSize + App.config.tileSize / 2;
-  //       const targetY = targetNode.point.y * App.config.tileSize + App.config.tileSize / 2;
-
-  //       this.currentlyMoving = true;
-  //       this.currentTarget = new PIXI.Point(targetX, targetY);
-
-  //       // Move to the next point in the path
-  //       this.currentPathIndex++;
-
-  //       // Check if we've reached the end
-  //       if (this.currentPathIndex >= this.path.length) {
-  //         this.reachedEnd = true;
-  //         console.log('Adversary reached the flag!');
-  //       }
-  //     }
-  //   }
-
-  //   if (!this.started && this.currentTarget.x !== 0.0) { 
-  //     Matter.Body.setPosition(this.body, { x: this.currentTarget.x, y: this.currentTarget.y });
-  //     this.started = true;
-  // }
-
-  //   // Update the sprite position to match the physics body
-  //   this.sprite.position = this.body.position;
-  // }
-
   destroy() {
     Matter.Composite.remove(App.physics.world, this.body);
     this.container.removeChild(this.sprite);
