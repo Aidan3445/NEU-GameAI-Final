@@ -24,10 +24,11 @@ export class Adversary {
     this.sprite.tint = 0xff0000; // Red tint
     this.container.addChild(this.sprite);
 
-    this.body = Matter.Bodies.circle(
+    this.body = Matter.Bodies.rectangle(
       start.x * App.config.tileSize + App.config.tileSize / 2,
       start.y * App.config.tileSize + App.config.tileSize / 2,
-      App.config.tileSize * App.config.playerScale / 8,
+      App.config.tileSize * App.config.playerScale,
+      App.config.tileSize * App.config.playerScale,
       {
         friction: 0,
         frictionAir: 0,
