@@ -8,6 +8,7 @@ import { level } from '../game/GameScene';
 export class Adversary {
   container: PIXI.Container;
   sprite!: PIXI.Sprite;
+
   body!: Matter.Body;
   path: Node[] = [];
   currentPathIndex: number = 0;
@@ -15,36 +16,56 @@ export class Adversary {
   moveTimer: number = 0;
   moveDelay: number = 30; // frames between moves
   reachedEnd: boolean = false;
+  backgroundContainer: PIXI.Container;
+
+  currentlyMoving: boolean = false;
+  currentTarget: PIXI.Point = new PIXI.Point(0, 0);
+
+  started: boolean = false;
+
+  moving: boolean = false;
+  canJump: boolean = false;
+  jumpCooldown: boolean = false;
+  contacts: Matter.Vector[] = [];
+
 
   constructor(start: PIXI.Point, target: PIXI.Point, backgroundContainer: PIXI.Container) {
     this.container = new PIXI.Container();
-    this.sprite = App.sprite('player');
-    this.sprite.setSize(App.config.tileSize * App.config.playerScale);
-    this.sprite.anchor.set(0.5);
-    this.sprite.tint = 0xff0000; // Red tint
-    this.container.addChild(this.sprite);
+    this.createSprite();
+    this.createBody();
 
-    this.body = Matter.Bodies.circle(
-      start.x * App.config.tileSize + App.config.tileSize / 2,
-      start.y * App.config.tileSize + App.config.tileSize / 2,
-      App.config.tileSize * App.config.playerScale / 8,
-      {
-        friction: 0,
-        frictionAir: 0,
-        restitution: 0,
-        inertia: Infinity,
-        isStatic: true // Make it static so it doesn't collide with physics
-      }
-    );
-
-    Matter.Composite.add(App.physics.world, this.body);
-
-    // Create path graphics for visualizing the path
+    this.backgroundContainer = backgroundContainer;
     this.pathGraphics = new PIXI.Graphics();
     backgroundContainer.addChild(this.pathGraphics);
 
-    // Calculate the path from start to target
     this.calculatePath(start, target);
+
+  }
+  
+  createSprite() {
+    this.sprite = App.sprite("scary");
+    this.sprite.position = new PIXI.Point(0, 0);
+    this.sprite.setSize(App.config.tileSize * App.config.playerScale);
+    this.container.addChild(this.sprite);
+
+    // this is the only sprite with anchor in the center of mass
+    this.sprite.anchor.set(0.5, 0.5);
+  }
+
+  createBody() {
+    this.body = Matter.Bodies.rectangle(
+      this.sprite.x,
+      this.sprite.y,
+      this.sprite.width,
+      this.sprite.height,
+      {
+        mass: 50,
+        inertia: Infinity,
+        friction: 0.05,
+        frictionAir: 0,
+      });
+
+    Matter.World.add(App.physics.world, this.body);
   }
 
   calculatePath(start: PIXI.Point, target: PIXI.Point) {
@@ -176,34 +197,184 @@ export class Adversary {
     }
   }
 
+  get velocity() {
+    // console.log(this.body.velocity);
+    return this.body.velocity;
+  }
+
+  move(xDir: number) {
+    Matter.Body.applyForce(this.body, this.body.position, {
+      x: xDir * App.config.playerSpeed,
+      y: 0
+    });
+
+    this.moving = true;
+  }
+
+
+  jump() {
+    if (this.canJump && !this.jumpCooldown) {
+      Matter.Body.setVelocity(this.body, {
+        x: this.velocity.x,
+        y: 0
+      });
+
+      const wallJump = 0;
+      /*
+        this.contacts.reduce((acc, normal) => {
+        return acc + normal.x;
+      }, 0);
+      */ 
+
+      Matter.Body.applyForce(this.body, this.body.position, {
+        x: wallJump * App.config.playerSpeed * 0.5,
+        y: -App.config.playerJump
+      });
+      this.canJump = false;
+      this.sprite.texture = App.res("scary");
+
+      this.jumpCooldown = true;
+      setTimeout(() => this.jumpCooldown = false, 500);
+    }
+  }
+  
+  land(normal: Matter.Vector) {
+    this.canJump = true;
+    this.sprite.texture = App.sprite("scary").texture;
+    this.contacts.push(normal);
+    Matter.Body.setVelocity(this.body, {
+      x: 0,
+      y: this.velocity.y
+    });
+  }
+
+  leftPlatform(normal: Matter.Vector) {
+    const toRemoveIndex = this.contacts.findIndex((n) => n.x === normal.x && n.y === normal.y);
+    this.contacts = this.contacts.filter((_, index) => index !== toRemoveIndex);
+
+    if (this.contacts.length === 0) {
+      this.canJump = false;
+      this.sprite.texture = App.res("scary");
+    }
+  }
+
   update() {
-    // Move along the path
-    if (this.path.length > 0 && this.currentPathIndex < this.path.length && !this.reachedEnd) {
-      // Only move after the delay
-      this.moveTimer++;
-      if (this.moveTimer >= this.moveDelay) {
+    // A threshold for "close enough to the target."
+    // Adjust based on tileSize, sprite size, etc.
+    const threshold = 60;
+    // 1. Calculate distance to currentTarget
+    const dx = this.currentTarget.x - this.body.position.x;
+    const dy = this.currentTarget.y - this.body.position.y;
+    const distance = Math.hypot(dx, dy);
+    if (distance < threshold) {
+      // We arrived at the currentTarget
+      this.currentlyMoving = false;
+      console.log('Adversary reached the target point', this.currentTarget.x, this.currentTarget.y);
+    }
+
+  
+    if (this.currentlyMoving) {
+      // 2. Apply horizontal movement
+      //    You can tweak "speedFactor" for how strong the horizontal force is
+      const speedFactor = 0.02; 
+      const xDir = (dx > 0) ? 1 : -1;
+      this.move(xDir * speedFactor);
+
+      // 3. Optionally decide when to jump
+      //    For example, if the target is above us, or we need to climb onto a platform
+      //    This is your game logic: maybe jump only if dy < some negative number?
+      if (dy < -App.config.tileSize * 0.5 && this.canJump && !this.jumpCooldown) {
+        this.jump();
+      }
+      // this.jump();
+    } else {
+      // 4. Pick the next path node if there is one
+      if (this.path.length > 0 && this.currentPathIndex < this.path.length && !this.reachedEnd) {
         const targetNode = this.path[this.currentPathIndex];
         const targetX = targetNode.point.x * App.config.tileSize + App.config.tileSize / 2;
         const targetY = targetNode.point.y * App.config.tileSize + App.config.tileSize / 2;
-
-        // Move the body to the next position in the path
-        Matter.Body.setPosition(this.body, { x: targetX, y: targetY });
-
+  
+        // Assign currentTarget and mark that we are moving
+        this.currentlyMoving = true;
+        this.currentTarget = new PIXI.Point(targetX, targetY); 
+  
         // Move to the next point in the path
         this.currentPathIndex++;
-        this.moveTimer = 0;
-
-        // Check if we've reached the end
+  
+        // Check if we've reached the end of the path
         if (this.currentPathIndex >= this.path.length) {
           this.reachedEnd = true;
           console.log('Adversary reached the flag!');
         }
       }
     }
-
-    // Update the sprite position to match the physics body
+  
+    // If not started yet, you can do a spawn teleport or skip if you want purely physics-based
+    if (!this.started && this.currentTarget.x !== 0.0) { 
+      Matter.Body.setPosition(this.body, {
+        x: this.currentTarget.x,
+        y: this.currentTarget.y
+      });
+      this.started = true;
+    }
+  
+    // Keep sprite's position synced with physics body
     this.sprite.position = this.body.position;
   }
+  
+
+  // update() {
+  //   const threshold = 30; // <--- Tweak this “arrival threshold” as needed
+ 
+  //   if (this.currentlyMoving) {
+  //     console.log('Adversary is moving to target point', this.currentTarget.x, this.currentTarget.y);
+  //     const distance = Math.hypot(this.currentTarget.x - this.body.position.x, this.currentTarget.y - this.body.position.y);
+  //     if (distance < threshold) {
+  //       this.currentlyMoving = false;
+  //       console.log('Adversary reached the target point', this.currentTarget.x, this.currentTarget.y);
+  //       console.log('Adversary position:', this.body.position.x, this.body.position.y);
+  //     } else { 
+
+  //       let speed = .02;
+  //       const direction = this.currentTarget.x - this.body.position.x;
+  //       if (direction < 0) {
+  //         speed = -.02;  
+  //       }
+  //       this.jump();
+        
+  //       this.move(speed);
+  //       // Rotate the sprite to face the direction of movement
+  //       // this.sprite.rotation = angle;
+  //     }
+  //   } else {
+  //     // Move along the path
+  //     if (this.path.length > 0 && this.currentPathIndex < this.path.length && !this.reachedEnd) {
+  //       const targetNode = this.path[this.currentPathIndex];
+  //       const targetX = targetNode.point.x * App.config.tileSize + App.config.tileSize / 2;
+  //       const targetY = targetNode.point.y * App.config.tileSize + App.config.tileSize / 2;
+
+  //       this.currentlyMoving = true;
+  //       this.currentTarget = new PIXI.Point(targetX, targetY);
+
+  //       // Move to the next point in the path
+  //       this.currentPathIndex++;
+
+  //       // Check if we've reached the end
+  //       if (this.currentPathIndex >= this.path.length) {
+  //         this.reachedEnd = true;
+  //         console.log('Adversary reached the flag!');
+  //       }
+  //     }
+  //   }
+
+  //   if (!this.started && this.currentTarget.x !== 0.0) { 
+  //     Matter.Body.setPosition(this.body, { x: this.currentTarget.x, y: this.currentTarget.y });
+  //     this.started = true;
+  // }
+
+  //   // Update the sprite position to match the physics body
+  //   this.sprite.position = this.body.position;
+  // }
 
   destroy() {
     Matter.Composite.remove(App.physics.world, this.body);

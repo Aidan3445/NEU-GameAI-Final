@@ -36,6 +36,7 @@ export class Player {
   });
 
   get velocity() {
+    // console.log(this.body.velocity);
     return this.body.velocity;
   }
 

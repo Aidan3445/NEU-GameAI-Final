@@ -41,6 +41,10 @@ export class GameScene extends Scene {
     // Initially place the player but don't allow movement yet
     this.spawn(this.playerSpawn);
     this.disablePlayerMovement();
+
+    const group = Matter.Body.nextGroup(true);
+    this.adversary.body.collisionFilter.group = group;
+    this.player.body.collisionFilter.group = group;
   }
 
   createCamera(levelRect: PIXI.Rectangle) {
@@ -148,6 +152,18 @@ export class GameScene extends Scene {
             this.player.land(pair.collision.normal);
             App.controllerInput.drop = false;
           }
+
+          const adversary = colliders.find(body => body.id === this.adversary?.body.id);
+          if (adversary && flag) {
+            console.log("Adversary reached the flag");
+          } 
+ 
+          //  I removed: && pair.collision.normal.y <= 0. Why is this here?
+          if (adversary && platform) {
+            this.adversary.land(pair.collision.normal);
+            App.controllerInput.drop = false;
+          }
+
         });
       });
 
@@ -161,14 +177,20 @@ export class GameScene extends Scene {
             // add delay for more forgiving platforming
             setTimeout(() => this.player.leftPlatform(pair.collision.normal), 100);
           }
+
+          const adversary = colliders.find(body => body.id === this.adversary?.body.id);
+          if (adversary && platform) {
+            setTimeout(() => this.adversary.leftPlatform(pair.collision.normal), 100);
+          }
+
         });
       });
-  }
+  } 
 
   keyEvents() {
     window.addEventListener("keydown", (event) => {
       // Start the game when any key is pressed if we're in stage 0
-      if (this.gameStage === 0 && this.adversary.reachedEnd && !this.gameStarted) {
+      if (this.gameStage === 0 && !this.gameStarted) {
         this.enablePlayerMovement();
       }
 
@@ -228,6 +250,7 @@ export class GameScene extends Scene {
       }
     });
   }
+  
 
   update(dt: PIXI.Ticker) {
     if (this.player.body.position.y > this.camera.shift.height) {
