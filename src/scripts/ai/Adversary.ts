@@ -12,40 +12,47 @@ export class Adversary {
   path: Node[] = [];
   currentPathIndex: number = 0;
   pathGraphics: PIXI.Graphics;
+  canMove: boolean = true;
   moveTimer: number = 0;
   moveDelay: number = 30; // frames between moves
   reachedEnd: boolean = false;
+  target: PIXI.Point;
 
   constructor(start: PIXI.Point, target: PIXI.Point, backgroundContainer: PIXI.Container) {
     this.container = new PIXI.Container();
     this.sprite = App.sprite('player');
+    this.sprite.position = new PIXI.Point(0, 0);
     this.sprite.setSize(App.config.tileSize * App.config.playerScale);
     this.sprite.anchor.set(0.5);
     this.sprite.tint = 0xff0000; // Red tint
     this.container.addChild(this.sprite);
 
     this.body = Matter.Bodies.rectangle(
-      start.x * App.config.tileSize + App.config.tileSize / 2,
-      start.y * App.config.tileSize + App.config.tileSize / 2,
-      App.config.tileSize * App.config.playerScale,
-      App.config.tileSize * App.config.playerScale,
+      this.sprite.x,
+      this.sprite.y,
+      this.sprite.width,
+      this.sprite.height,
       {
+        mass: 50,
+        inertia: Infinity,
         friction: 0,
         frictionAir: 0,
-        restitution: 0,
-        inertia: Infinity,
-        isStatic: true // Make it static so it doesn't collide with physics
-      }
-    );
+      });
 
-    Matter.Composite.add(App.physics.world, this.body);
+    Matter.World.add(App.physics.world, this.body);
 
     // Create path graphics for visualizing the path
     this.pathGraphics = new PIXI.Graphics();
     backgroundContainer.addChild(this.pathGraphics);
 
     // Calculate the path from start to target
-    this.calculatePath(start, target);
+    // this.calculatePath(start, target);
+    this.target = target;
+    // Move the body to the start position in the path
+    Matter.Body.setPosition(this.body, {
+      x: start.x * App.config.tileSize + App.config.tileSize / 2,
+      y: start.y * App.config.tileSize + App.config.tileSize / 2
+    });
   }
 
   calculatePath(start: PIXI.Point, target: PIXI.Point) {
@@ -178,28 +185,40 @@ export class Adversary {
   }
 
   update() {
-    // Move along the path
-    if (this.path.length > 0 && this.currentPathIndex < this.path.length && !this.reachedEnd) {
-      // Only move after the delay
-      this.moveTimer++;
-      if (this.moveTimer >= this.moveDelay) {
-        const targetNode = this.path[this.currentPathIndex];
-        const targetX = targetNode.point.x * App.config.tileSize + App.config.tileSize / 2;
-        const targetY = targetNode.point.y * App.config.tileSize + App.config.tileSize / 2;
+    // Only move after the delay
+    if (this.canMove) {
+      this.calculatePath(new PIXI.Point(Math.floor(this.body.position.x / App.config.tileSize),
+        Math.floor(this.body.position.y / App.config.tileSize)), this.target);
+      const targetNode = this.path[1];
+      if (!targetNode) return;
 
-        // Move the body to the next position in the path
-        Matter.Body.setPosition(this.body, { x: targetX, y: targetY });
+      const targetX = targetNode.point.x * App.config.tileSize + App.config.tileSize / 2;
+      const targetY = targetNode.point.y * App.config.tileSize + App.config.tileSize / 2;
 
-        // Move to the next point in the path
-        this.currentPathIndex++;
-        this.moveTimer = 0;
+      console.log('Moving to', targetNode.point.x, targetNode.point.y,
+        targetNode.getNeighborWeight(getNodeKey(targetX, targetY)));
 
-        // Check if we've reached the end
-        if (this.currentPathIndex >= this.path.length) {
-          this.reachedEnd = true;
-          console.log('Adversary reached the flag!');
-        }
+      Matter.Body.setVelocity(this.body, {
+        x: 0,
+        y: 0
+      });
+      Matter.Body.applyForce(this.body, this.body.position, {
+        x: App.config.playerMaxSpeed * Math.sign(targetX - this.body.position.x),
+        y: -App.config.playerJump
+      });
+      console.log('Adversary jumping', App.config.playerSpeed * Math.sign(targetX - this.body.position.x));
+      this.canMove = false;
+
+      // Move to the next point in the path
+      this.currentPathIndex++;
+      this.moveTimer = 0;
+
+      // Check if we've reached the end
+      if (this.currentPathIndex >= this.path.length) {
+        this.reachedEnd = true;
+        console.log('Adversary reached the flag!');
       }
+      this.moveTimer++;
     }
 
     // Update the sprite position to match the physics body

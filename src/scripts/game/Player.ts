@@ -56,7 +56,7 @@ export class Player {
     this.container.addChild(this.sprite);
 
     // this is the only sprite with anchor in the center of mass
-    this.sprite.anchor.set(0.5, 0.5);
+    this.sprite.anchor.set(0.5);
   }
 
   createBody() {
@@ -108,43 +108,7 @@ export class Player {
       this.jumpCooldown = true;
       setTimeout(() => this.jumpCooldown = false, 500);
 
-      // draw parabola of jumps to the left
-      this.leftParabola = new PIXI.Graphics();
-      this.leftParabola.moveTo(
-        this.body.position.x - App.config.M * App.config.tileSize / 2,
-        this.body.position.y + h() * App.config.tileSize);
-      for (let x = App.config.M / 2; x <= App.config.M * 1.5; x++) {
-        this.leftParabola.lineTo(this.body.position.x - x * App.config.tileSize,
-          this.body.position.y + f(x) * App.config.tileSize);
-      }
-      this.leftParabola.stroke({ color: 0xff0000, pixelLine: true });
-      this.backgroundContainer.addChild(this.leftParabola);
-
-      // draw parabola of jumps to the right
-      this.rightParabola = new PIXI.Graphics();
-      this.rightParabola.moveTo(
-        this.body.position.x + App.config.M * App.config.tileSize / 2,
-        this.body.position.y + h() * App.config.tileSize);
-      for (let x = App.config.M / 2; x <= App.config.M * 1.5; x++) {
-        this.rightParabola.lineTo(this.body.position.x + x * App.config.tileSize,
-          this.body.position.y + f(x) * App.config.tileSize);
-      }
-      this.rightParabola.stroke({ color: 0xff0000, pixelLine: true });
-      this.backgroundContainer.addChild(this.rightParabola);
-
-      // draw cap of the parabolas
-      this.centerTop = new PIXI.Graphics();
-      this.centerTop.moveTo(
-        (this.body.position.x - App.config.M * App.config.tileSize / 2),
-        (this.body.position.y + h() * App.config.tileSize)
-      );
-      this.centerTop.lineTo(
-        (this.body.position.x + App.config.M * App.config.tileSize / 2),
-        (this.body.position.y + h() * App.config.tileSize)
-      );
-
-      this.centerTop.stroke({ color: 0xff0000, pixelLine: true });
-      this.backgroundContainer.addChild(this.centerTop);
+      this.debugArc();
     }
   }
 
@@ -187,6 +151,56 @@ export class Player {
 
     this.debugText.text = `${this.body.position.x.toFixed(2)}, ${this.body.position.y.toFixed(2)}`;
 
+    this.debugTrail();
+    this.debugNeighbors();
+  }
+
+  destroy() {
+    Matter.World.remove(App.physics.world, this.body);
+    this.container.destroy();
+  }
+
+  debugArc() {
+    // draw parabola of jumps to the left
+    this.leftParabola = new PIXI.Graphics();
+    this.leftParabola.moveTo(
+      this.body.position.x - App.config.M * App.config.tileSize / 2,
+      this.body.position.y + h() * App.config.tileSize);
+    for (let x = App.config.M / 2; x <= App.config.M * 1.5; x++) {
+      this.leftParabola.lineTo(this.body.position.x - x * App.config.tileSize,
+        this.body.position.y + f(x) * App.config.tileSize);
+    }
+    this.leftParabola.stroke({ color: 0xff0000, pixelLine: true });
+    this.backgroundContainer.addChild(this.leftParabola);
+
+    // draw parabola of jumps to the right
+    this.rightParabola = new PIXI.Graphics();
+    this.rightParabola.moveTo(
+      this.body.position.x + App.config.M * App.config.tileSize / 2,
+      this.body.position.y + h() * App.config.tileSize);
+    for (let x = App.config.M / 2; x <= App.config.M * 1.5; x++) {
+      this.rightParabola.lineTo(this.body.position.x + x * App.config.tileSize,
+        this.body.position.y + f(x) * App.config.tileSize);
+    }
+    this.rightParabola.stroke({ color: 0xff0000, pixelLine: true });
+    this.backgroundContainer.addChild(this.rightParabola);
+
+    // draw cap of the parabolas
+    this.centerTop = new PIXI.Graphics();
+    this.centerTop.moveTo(
+      (this.body.position.x - App.config.M * App.config.tileSize / 2),
+      (this.body.position.y + h() * App.config.tileSize)
+    );
+    this.centerTop.lineTo(
+      (this.body.position.x + App.config.M * App.config.tileSize / 2),
+      (this.body.position.y + h() * App.config.tileSize)
+    );
+
+    this.centerTop.stroke({ color: 0xff0000, pixelLine: true });
+    this.backgroundContainer.addChild(this.centerTop);
+  }
+
+  debugTrail() {
     const circle = new PIXI.Graphics();
     circle.circle(this.body.position.x, this.body.position.y, 10);
     circle.fill(0x00ffff);
@@ -194,8 +208,10 @@ export class Player {
     this.backgroundContainer.addChild(circle);
     setTimeout(() => {
       this.backgroundContainer.removeChild(circle);
-    }, 1000);
+    }, 100);
+  }
 
+  debugNeighbors() {
     // remove current neighbor rects
     this.neighborRects.forEach((rect) => {
       this.backgroundContainer.removeChild(rect);
@@ -252,11 +268,6 @@ export class Player {
 
       this.neighborRects.push(frame);
     }
-  }
-
-  destroy() {
-    Matter.World.remove(App.physics.world, this.body);
-    this.container.destroy();
   }
 }
 

@@ -156,7 +156,7 @@ export function clearLine(
   let errorprev: number;
 
   // check if the start point is traversable
-  if (!traversableChars.includes(levelPlan[y]?.[x])) {
+  if (!traversableChars.includes(levelPlan[y]?.[x]) && y >= 0) {
     return false;
   }
 
@@ -188,21 +188,21 @@ export function clearLine(
 
         // check if the point is traversable
         if (error + errorprev < ddx) {
-          if (!traversableChars.includes(levelPlan[y - ystep]?.[x])) {
+          if (!traversableChars.includes(levelPlan[y - ystep]?.[x]) && y - ystep >= 0) {
             return false;
           }
         } else if (error + errorprev > ddx) {
-          if (!traversableChars.includes(levelPlan[y]?.[x - xstep])) {
+          if (!traversableChars.includes(levelPlan[y]?.[x - xstep]) && y >= 0) {
             return false;
           }
         } else {
-          if (!traversableChars.includes(levelPlan[y]?.[x - xstep]) ||
-            !traversableChars.includes(levelPlan[y - ystep]?.[x])) {
+          if ((!traversableChars.includes(levelPlan[y]?.[x - xstep]) && y >= 0) ||
+            (!traversableChars.includes(levelPlan[y - ystep]?.[x]) && y - ystep >= 0)) {
             return false;
           }
         }
       }
-      if (!traversableChars.includes(levelPlan[y]?.[x])) {
+      if (!traversableChars.includes(levelPlan[y]?.[x]) && y >= 0) {
         return false;
       }
       errorprev = error;
@@ -218,21 +218,21 @@ export function clearLine(
 
         // check if the point is traversable
         if (error + errorprev < ddy) {
-          if (!traversableChars.includes(levelPlan[y]?.[x - xstep])) {
+          if (!traversableChars.includes(levelPlan[y]?.[x - xstep]) && y >= 0) {
             return false;
           }
         } else if (error + errorprev > ddy) {
-          if (!traversableChars.includes(levelPlan[y - ystep]?.[x])) {
+          if (!traversableChars.includes(levelPlan[y - ystep]?.[x]) && y - ystep >= 0) {
             return false;
           }
         } else {
-          if (!traversableChars.includes(levelPlan[y - ystep]?.[x]) ||
-            !traversableChars.includes(levelPlan[y]?.[x - xstep])) {
+          if ((!traversableChars.includes(levelPlan[y - ystep]?.[x]) && y - ystep >= 0) ||
+            (!traversableChars.includes(levelPlan[y]?.[x - xstep]) && y >= 0)) {
             return false;
           }
         }
       }
-      if (!traversableChars.includes(levelPlan[y]?.[x])) {
+      if (!traversableChars.includes(levelPlan[y]?.[x]) && y >= 0) {
         return false;
       }
       errorprev = error;

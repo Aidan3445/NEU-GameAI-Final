@@ -112,6 +112,10 @@ export class GameScene extends Scene {
   }
 
   physicsEvents() {
+    // allow player and adversary to pass through each other
+    this.player.body.collisionFilter.group = -1;
+    this.adversary.body.collisionFilter.group = -1;
+
     Matter.Events.on(App.physics, 'beforeUpdate',
       () => {
         // Only allow player movement if the game has started
@@ -142,6 +146,7 @@ export class GameScene extends Scene {
           const colliders = [pair.bodyA, pair.bodyB];
           const player = colliders.find(body => body.id === this.player?.body.id);
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
+          const adversary = colliders.find(body => body.id === this.adversary?.body.id);
 
           const flag = colliders.find(body => body.id === this.flag?.body.id);
           if (player && flag) {
@@ -152,6 +157,11 @@ export class GameScene extends Scene {
           if (player && platform && pair.collision.normal.y <= 0) {
             this.player.land(pair.collision.normal);
             App.controllerInput.drop = false;
+          }
+
+          if (adversary && platform && adversary.position.y < platform.position.y) {
+            this.adversary.canMove = true;
+            console.log("Adversary landed on platform");
           }
         });
       });
@@ -323,7 +333,7 @@ export class GameScene extends Scene {
 }
 
 export const level = [
-  "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
+  "P                                                          P",
   "P                                                          P",
   "P                                                          P",
   "P                                                          P",
