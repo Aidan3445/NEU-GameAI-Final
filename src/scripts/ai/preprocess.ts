@@ -137,7 +137,8 @@ return { x: xMid, y: yMid };
 }
 //*/
 
-function estimateArc(
+// https://www.desmos.com/calculator/two1afywet
+export function estimateArc(
   x: number, // input
   x1: number, // startX
   y1: number, // startY
@@ -145,13 +146,12 @@ function estimateArc(
   y2: number, // endY
   J: number, // max jump height
 ): number {
-  const ANumerator = 2 * (y2 - (3 * y1) - (2 * J));
-  const ADenominator = (x2 - x1) ** 2;
-  const A = ANumerator / ADenominator;
-
-  const BNumerator = 4 * (J + y1) - y2 + y1;
+  const BNumRoot = Math.sqrt(-J * (-J - (y2 - y1)));
+  const BNumerator = 2 * -J - 2 * BNumRoot;
   const BDenominator = (x2 - x1);
   const B = BNumerator / BDenominator;
+
+  const A = -(B ** 2) / (4 * -J);
 
   const C = y1;
 

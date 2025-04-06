@@ -1,8 +1,10 @@
 import * as PIXI from "pixi.js";
 import { App } from "../system/App";
 import Matter from "matter-js";
-import { getLevelNodes, getNodeKey } from "../ai/preprocess";
+import { getLevelNodes, getNodeKey, estimateArc } from "../ai/preprocess";
 import { level } from "./GameScene";
+
+let logged = false;
 
 export class Player {
   container: PIXI.Container;
@@ -210,13 +212,43 @@ export class Player {
     if (!node) return;
     const neighbors = node.getNeighbors();
     for (const [key, _] of neighbors) {
+      const neighbor = nodes.get(key)!;
       const frame = new PIXI.Graphics();
-      frame.rect(nodes.get(key)!.point.x * App.config.tileSize,
-        nodes.get(key)!.point.y * App.config.tileSize,
+      frame.rect(neighbor.point.x * App.config.tileSize,
+        neighbor.point.y * App.config.tileSize,
         App.config.tileSize,
         App.config.tileSize);
       frame.stroke(0xff00ff);
       this.backgroundContainer.addChild(frame);
+
+      // draw estimated jump arc
+      const arc = new PIXI.Graphics();
+      arc.moveTo(this.body.position.x, this.body.position.y);
+      for (let x = 0; x < 6; x++) {
+        const step = node.point.x + x * (neighbor.point.x - node.point.x) / 6;
+        const y = estimateArc(
+          step,
+          node.point.x,
+          node.point.y,
+          neighbor.point.x,
+          neighbor.point.y,
+          App.config.J,
+        );
+
+        if (!logged) {
+          console.log(
+            `x: ${step}, y: ${y}, node: ${node.point.x}, ${node.point.y}, neighbor: ${neighbor.point.x}, ${neighbor.point.y}, J: ${App.config.J}`);
+        }
+        arc.lineTo(step * App.config.tileSize + App.config.tileSize / 2,
+          y * App.config.tileSize + App.config.tileSize / 2);
+      }
+      arc.lineTo(neighbor.point.x * App.config.tileSize + App.config.tileSize / 2,
+        neighbor.point.y * App.config.tileSize + App.config.tileSize / 2);
+      arc.stroke({ color: 0x00faff, pixelLine: true });
+      this.backgroundContainer.addChild(arc);
+      this.neighborRects.push(arc);
+
+      logged = true;
 
       this.neighborRects.push(frame);
     }
