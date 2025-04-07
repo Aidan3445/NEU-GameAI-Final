@@ -23,12 +23,13 @@ export class GameScene extends Scene {
   // 0: AI is moving to the flag
   // 1: Player's turn to move
   gameStage: number = 0;
-
+  levelPlan: string[] = [];
   startText: PIXI.Text | null = null;
 
   create() {
-    const { playerStart, platforms, levelRect, flagPoint } = buildLevel(level);
-    getLevelNodes(level, true);
+    this.levelPlan = level;
+    const { playerStart, platforms, levelRect, flagPoint } = buildLevel(this.levelPlan);
+    getLevelNodes(this.levelPlan, true);
 
     this.createCamera(levelRect);
 
@@ -82,7 +83,7 @@ export class GameScene extends Scene {
   createAdversary(start: PIXI.Point, target: PIXI.Point) {
     // adversary starts one tile left
     const advStart = new PIXI.Point(start.x - 1, start.y);
-    this.adversary = new Adversary(advStart, target, this.camera.bg.container);
+    this.adversary = new Adversary(advStart, target, this.camera.bg.container, this.levelPlan);
     this.container.addChild(this.adversary.container);
     this.adversary.container.zIndex = 90;
   }
