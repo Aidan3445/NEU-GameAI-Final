@@ -241,7 +241,13 @@ export class Player {
     if (!node) return;
     const neighbors = node.getNeighbors();
     for (const [key, _] of neighbors) {
-      const neighbor = nodes.get(key)!;
+      const neighbor = nodes.get(key);
+
+      if (!neighbor) {
+        console.warn("Neighbor not found", key, node);
+        continue;
+      }
+
       const frame = new PIXI.Graphics();
       frame.rect(neighbor.point.x * App.config.tileSize,
         neighbor.point.y * App.config.tileSize,

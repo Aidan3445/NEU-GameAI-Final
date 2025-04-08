@@ -74,7 +74,10 @@ export function setNeighbors(
       if (nodeInCenterRect) {
         // check if the path is clear
         if (clearArc(node, nodeInCenterRect, levelPlan, log)) {
-          node.addNeighbor(getNodeKey(x, y), 10);
+          node.addNeighbor(
+            getNodeKey(x, y),
+            jumpArcLength(node.point.x, node.point.y, x, y, App.config.J),
+          );
           break;
         }
       }
@@ -95,7 +98,10 @@ export function setNeighbors(
       if (nodeUnderParabolaLeft) {
         // check if the path is clear
         if (!clearArc(node, nodeUnderParabolaLeft, levelPlan, log)) {
-          node.addNeighbor(getNodeKey(leftX, y), 10);
+          node.addNeighbor(
+            getNodeKey(leftX, y),
+            jumpArcLength(node.point.x, node.point.y, leftX, y, App.config.J),
+          );
         }
       }
 
@@ -103,7 +109,10 @@ export function setNeighbors(
       if (nodeUnderParabolaRight) {
         // check if the path is clear
         if (clearArc(node, nodeUnderParabolaRight, levelPlan, log)) {
-          node.addNeighbor(getNodeKey(rightX, y), 10);
+          node.addNeighbor(
+            getNodeKey(rightX, y),
+            jumpArcLength(node.point.x, node.point.y, rightX, y, App.config.J),
+          );
         }
       }
     }

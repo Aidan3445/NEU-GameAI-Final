@@ -148,7 +148,7 @@ export class Adversary {
         const neighbor = nodes.get(neighborKey);
         if (!neighbor || neighbor.visited) continue;
 
-        const tentativeGScore = gScore.get(getKey(current))! * weight;
+        const tentativeGScore = gScore.get(getKey(current))! + weight;
 
         if (tentativeGScore < gScore.get(getKey(neighbor))!) {
           neighbor.parent = current;
@@ -298,10 +298,11 @@ export class Adversary {
       x: xDir * App.config.playerSpeed,
       y: 0
     });
+
+    this.moving = true;
   }
 
   jump(targetNode: PIXI.Point, previousNode: PIXI.Point) {
-
     const currentTileY = this.body.position.y / App.config.tileSize;
     // instant call (once not looped)
     if (this.canJump) {
@@ -331,10 +332,12 @@ export class Adversary {
         targetNode.x,
         targetNode.y,
       );
+
       if (Number.isNaN(x)) {
         this.moving = false;
         return;
       }
+
       Matter.Body.setPosition(this.body, {
         x: (x + previousNode.x) * App.config.tileSize + App.config.tileSize / 2,
         y: this.body.position.y
@@ -344,37 +347,18 @@ export class Adversary {
 
 
   land() {
-    Matter.Body.setVelocity(this.body, {
-      x: 0,
-      y: 0
-    });
-
-    if (this.moving && this.currentTarget) {
-      // check if we reached the target
-      if (Math.abs(this.currentTarget.x - this.body.position.x) < 32 &&
-        Math.abs(this.currentTarget.y - this.body.position.y) < 32) {
-        console.log('Reached target', this.path[this.currentPathIndex].point);
-        this.currentPathIndex++;
-        this.currentTarget = new PIXI.Point(
-          this.path[this.currentPathIndex].point.x * App.config.tileSize + App.config.tileSize / 2,
-          this.path[this.currentPathIndex].point.y * App.config.tileSize + App.config.tileSize / 2
-        );
-      } else {
-        console.log(
-          "Not reached target",
-          this.path[this.currentPathIndex].point,
-          this.body.position,
-          this.currentTarget,
-          Math.abs(this.currentTarget.x - this.body.position.x),
-          Math.abs(this.currentTarget.y - this.body.position.y));
-      }
-    }
-
     setTimeout(() => {
       this.canJump = true;
     }, this.moveDelay);
     this.moving = false;
   }
+
+  atTarget() {
+    return this.currentTarget &&
+      Math.abs(this.currentTarget.x - this.body.position.x) < 10 &&
+      Math.abs(this.currentTarget.y - this.body.position.y) < 20;
+  }
+
 
   update() {
     if (this.currentTarget) {
@@ -383,6 +367,18 @@ export class Adversary {
         this.pathGraphics.clear();
         this.currentTarget = null;
         return;
+      }
+
+      // check if we reached the target
+      if (this.atTarget()) {
+        console.log('Reached target', this.path[this.currentPathIndex].point);
+        this.currentPathIndex++;
+        this.currentTarget = new PIXI.Point(
+          this.path[this.currentPathIndex].point.x * App.config.tileSize + App.config.tileSize / 2,
+          this.path[this.currentPathIndex].point.y * App.config.tileSize + App.config.tileSize / 2
+        );
+
+        this.moving = false;
       }
 
       // if we've not reached the end, move towards the target
