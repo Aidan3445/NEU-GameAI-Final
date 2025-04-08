@@ -92,5 +92,9 @@ export class Camera {
 
     return shift;
   }
+
+  static Fixed(camera: Camera, target: Matter.Body): PIXI.Rectangle {
+    return new PIXI.Rectangle(0, 0, camera.shift.width, camera.shift.height);
+  }
 }
 

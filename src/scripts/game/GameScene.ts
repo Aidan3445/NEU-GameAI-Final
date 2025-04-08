@@ -52,7 +52,7 @@ export class GameScene extends Scene {
   }
 
   createCamera(levelRect: PIXI.Rectangle) {
-    this.camera = new Camera(Camera.CenterFollow, levelRect, this.container);
+    this.camera = new Camera(Camera.Fixed, levelRect, this.container);
 
     this.camera.bg.container.zIndex = -1;
   }
