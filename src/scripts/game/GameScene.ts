@@ -15,7 +15,8 @@ import { Spike } from './Spike';
 import { ItemButton } from './ItemButton';
 // import { PixiPlugin } from 'gsap/all';
 import { level, oldTestLevel, rlevel } from './levels';
- 
+import { ItemSelector } from '../ai/ItemSelector';
+
 export class GameScene extends Scene {
   camera!: Camera;
   player!: Player;
@@ -452,7 +453,7 @@ export class GameScene extends Scene {
     
     // TODO: change this to use the behavior tree
     // this.aiItem = this.adversary.selectItem(this.availableItems, this.playerItem, playerPosition);
-    this.aiItem = this.availableItems[0]
+    this.aiItem = this.selectItemUsingBehaviorTree();
 
     // Create info text about AI's selection
     const aiSelectionText = new PIXI.Text({
@@ -675,6 +676,25 @@ export class GameScene extends Scene {
     this.selectedPlatforms = [];
 
     this.placeAIItem();
+  }
+  
+  /**
+   * Uses the behavior tree to select an item for the AI
+   */
+  selectItemUsingBehaviorTree(): ItemType {
+    const playerPosition = this.playerSpawn;
+    const aiPosition = this.adversaryStart;
+    const flagPosition = this.flagPoint;
+    
+    // Create an instance of ItemSelector and use it to select an item using the behavior tree
+    const itemSelector = new ItemSelector();
+    return itemSelector.selectItem(
+      this.playerItem!, 
+      this.levelPlan, 
+      playerPosition, 
+      aiPosition, 
+      flagPosition
+    );
   }
   
   /**
