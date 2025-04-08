@@ -28,7 +28,7 @@ export class GameScene extends Scene {
   startText: PIXI.Text | null = null;
 
   create() {
-    this.levelPlan = level;
+    this.levelPlan = walkLevel;
     const { playerStart, AIStart, platforms, levelRect, flagPoint } = buildLevel(this.levelPlan);
     getLevelNodes(this.levelPlan, true);
 
@@ -448,3 +448,23 @@ export const level = [
   "    P  P     P                     ",
 ];
 
+export const walkLevel = [
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "    X  A     F                     ",
+  "    PPPPPPPPPP                     ",
+];

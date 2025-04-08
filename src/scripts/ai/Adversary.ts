@@ -233,20 +233,7 @@ export class Adversary {
   }
 
   moveX() {
-    const dt = this.ticker.deltaTime;
-
-    const jumpForce = App.config.playerJump;
-    const mass = this.body.mass;
-    const verticalAcceleration = jumpForce / mass;
-
-    const v0 = verticalAcceleration * dt;
-
-
-
-
-
-    /*
-    const fraction = 0.05 * this.distanceAway;
+    const fraction = 0.01 * this.distanceAway;
 
     if (fraction < 0.001) {
       // If the distance is too small, stop moving
@@ -269,7 +256,6 @@ export class Adversary {
       x: clampedX,
       y: currentY
     });
-    */
   }
 
   jump() {
@@ -330,7 +316,7 @@ export class Adversary {
     const dy = this.currentTarget.y - AIy;
     const distance = Math.hypot(dx, dy);
 
-    console.log('Moving to next point in path', distance, threshold, this.currentPathIndex, this.path.length);
+    // console.log('Moving to next point in path', distance, threshold, this.currentPathIndex, this.path.length);
     // If we've arrived at the currentTarget
     if (distance < threshold && this.canJump === true) {
       // Only trigger the delay if we aren't already waiting
@@ -381,21 +367,30 @@ export class Adversary {
   }
 
   shouldIWalk() {
-    return false;
-
     const tileSize = App.config.tileSize;
 
     // 1) Convert physics position (pixels) to tile coordinates
-    const currentTileX = Math.floor(this.body.position.x / tileSize);
+    const currentTileX = Math.floor(
+      (this.body.position.x + tileSize / 2) / tileSize
+    );
     const currentTileY = Math.floor(
       (this.body.position.y + tileSize / 2) / tileSize
     );
 
-    const targetTileX = Math.floor(this.currentTarget.x / tileSize);
-    const targetTileY = Math.floor(this.currentTarget.y / tileSize);
+    // if (this.currentPathIndex === 0) {
+    //   console.log('No path, ShouldIWalk return false');
+    //   return false;
+    // }
+    // // Get the last tile in the path
+    // const lastTile = this.path[this.currentPathIndex - 1];
+    // const lastTileX = Math.floor(
+
+    const targetTileX = Math.floor((this.currentTarget.x + tileSize / 2) / tileSize);
+    const targetTileY = Math.floor((this.currentTarget.y + tileSize / 2) / tileSize);
 
     // 2) Must be on the same row to walk (otherwise we might need to jump)
     if (currentTileY !== targetTileY) {
+      console.log('Not on the same row, ShouldIWalk return false');
       return false;
     }
 
@@ -414,7 +409,7 @@ export class Adversary {
         currentTileY < 0 ||
         currentTileY >= this.levelPlan.length
       ) {
-        console.log('Out of bounds222');
+        console.log('X check not in bounds, ShouldIWalk return false');
         return false;
       }
 
@@ -422,7 +417,7 @@ export class Adversary {
       // (meaning it's an open space or something that doesn't block the AI)
       const currentTileChar = this.levelPlan[currentTileY][x];
       if (!traversableChars.includes(currentTileChar)) {
-        console.log('Out of bounds2');
+        console.log('X check is not a traversable object, ShouldIWalk return false');
         return false;
       }
 
@@ -433,7 +428,7 @@ export class Adversary {
         belowY >= this.levelPlan.length ||
         this.levelPlan[belowY][x] !== 'P'
       ) {
-        console.log('Out of bounds3');
+        console.log('X, Y+1 check is not a P, ShouldIWalk return false');
         return false; // If "below" is out of bounds or is traversable, we can't walk here
       }
     }
