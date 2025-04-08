@@ -807,20 +807,27 @@ export class GameScene extends Scene {
     switch (this.playerItem) {
       case ItemType.Platform:
         console.log("Creating platform at", gridX, gridY);
-        // Add a new platform (3 tiles wide)
-        const platformRect = new PIXI.Rectangle(
-          gridX * App.config.tileSize, 
-          gridY * App.config.tileSize, 
-          App.config.tileSize * 3, 
-          App.config.tileSize
-        );
-        const newPlatform = new Platform(platformRect);
-        this.container.addChild(newPlatform.container);
-        newPlatform.container.zIndex = 50;
-        this.platforms.push(newPlatform);
-        
-        // Ensure the physics body is properly added to the world
-        Matter.World.add(App.physics.world, newPlatform.body);
+        try {
+          // Add a new platform (3 tiles wide)
+          const platformRect = new PIXI.Rectangle(
+            gridX, 
+            gridY, 
+            3, // width in tiles
+            1  // height in tiles
+          );
+          console.log("Platform rectangle:", platformRect);
+          
+          const newPlatform = new Platform(platformRect);
+          this.container.addChild(newPlatform.container);
+          newPlatform.container.zIndex = 50;
+          this.platforms.push(newPlatform);
+          
+          // Note: We don't need to add the physics body manually because
+          // the Platform constructor already adds it to the physics world
+          console.log("Platform created successfully");
+        } catch (error) {
+          console.error("Error creating platform:", error);
+        }
         break;
         
       case ItemType.Bomb:
@@ -933,20 +940,27 @@ export class GameScene extends Scene {
     setTimeout(() => {
       switch (this.aiItem) {
         case ItemType.Platform:
-          // Add a new platform (3 tiles wide)
-          const platformRect = new PIXI.Rectangle(
-            gridX * App.config.tileSize, 
-            gridY * App.config.tileSize, 
-            App.config.tileSize * 3, 
-            App.config.tileSize
-          );
-          const newPlatform = new Platform(platformRect);
-          this.container.addChild(newPlatform.container);
-          newPlatform.container.zIndex = 50;
-          this.platforms.push(newPlatform);
-          
-          // Ensure the physics body is properly added to the world
-          Matter.World.add(App.physics.world, newPlatform.body);
+          try {
+            // Add a new platform (3 tiles wide)
+            const platformRect = new PIXI.Rectangle(
+              gridX, 
+              gridY, 
+              3, // width in tiles
+              1  // height in tiles
+            );
+            console.log("AI Platform rectangle:", platformRect);
+            
+            const newPlatform = new Platform(platformRect);
+            this.container.addChild(newPlatform.container);
+            newPlatform.container.zIndex = 50;
+            this.platforms.push(newPlatform);
+            
+            // Note: We don't need to add the physics body manually because
+            // the Platform constructor already adds it to the physics world
+            console.log("AI Platform created successfully");
+          } catch (error) {
+            console.error("Error creating AI platform:", error);
+          }
           break;
           
         case ItemType.Bomb:
