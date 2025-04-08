@@ -21,15 +21,14 @@ export class Spike {
     this.container = new PIXI.Container();
     this.createSprite(point);
     this.createBody(point);
+    this.sprite.position = this.body.position;
   }
 
   createSprite(point: PIXI.Point) {
     this.sprite = App.sprite("spikes");
-
     this.sprite.setSize(App.config.tileSize);
     this.container.addChild(this.sprite);
   }
-
 
   createBody(point: PIXI.Point) {
     this.body = Matter.Bodies.rectangle(

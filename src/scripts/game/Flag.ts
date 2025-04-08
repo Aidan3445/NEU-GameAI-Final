@@ -21,6 +21,7 @@ export class Flag {
     this.container = new PIXI.Container();
     this.createSprite(point);
     this.createBody(point);
+    this.sprite.position = this.body.position;
   }
 
   createSprite(point: PIXI.Point) {

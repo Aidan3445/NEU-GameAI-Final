@@ -33,10 +33,9 @@ export class GameScene extends Scene {
   // 4: AI pathfinding to the flag
   // 5: Player's turn to move
   gameStage: number = 0;
-  levelPlan: string[] = [];
+  levelPlan!: string[];
   startText: PIXI.Text | null = null;
-
-  spikes: Spike[] = [];
+  spikes!: Spike[];
 
   // Item selection related properties
   availableItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes];
@@ -78,8 +77,6 @@ export class GameScene extends Scene {
     // // Initially place the player but don't allow movement yet
     // this.spawn(this.playerSpawn);
     // this.disablePlayerMovement();
-
-    
   }
 
   createCamera(levelRect: PIXI.Rectangle) {
@@ -166,8 +163,6 @@ export class GameScene extends Scene {
   }
 
   physicsEvents() {
-    console.log('we are in physicsEvents')
-
     Matter.Events.on(App.physics, 'beforeUpdate',
       () => {
         // Only allow player movement if the game has started and player is not trapped
@@ -202,6 +197,7 @@ export class GameScene extends Scene {
 
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
           const flag = colliders.find(body => body.id === this.flag?.body.id);
+          console.log('hi', this.spikes)
           const spike = colliders.find(body => this.spikes.some(s => s.body.id === body.id));
 
           if (player && flag) {
@@ -230,7 +226,7 @@ export class GameScene extends Scene {
             App.controllerInput.drop = false;
           }
 
-          if (player && spike) { 
+          if (player && spike) {
             // somehow lag player behind
             console.log("AI won, player died");
             this.resetGame();
@@ -383,6 +379,11 @@ export class GameScene extends Scene {
     this.platforms.forEach((platform) => {
       // this.camera.apply(platform.body);
       platform.update();
+    });
+
+    this.spikes.forEach((spike) => {
+      // this.camera.apply(platform.body);
+      spike.update();
     });
 
     // this.camera.apply(this.player.body);
@@ -646,6 +647,8 @@ export class GameScene extends Scene {
               // Not a flag platform, remove it
               this.container.removeChild(platform.container);
               this.platforms = this.platforms.filter(p => p !== platform);
+              this.container.removeChild(platform.container);
+              platform.destroy();
             }
           });
         }
@@ -685,7 +688,6 @@ export class GameScene extends Scene {
     this.selectedPlatforms = [];
 
     this.placeAIItem();
-    
   }
   
   /**
@@ -758,6 +760,8 @@ export class GameScene extends Scene {
           // Remove the closest platform
           if (closestPlatform) {
             this.platforms = this.platforms.filter(p => p !== closestPlatform);
+            this.container.removeChild(closestPlatform.container);
+            closestPlatform.destroy();
           }
           break;
           

@@ -1,5 +1,6 @@
 import * as PIXI from "pixi.js";
 import { App } from "./App";
+import { GameScene } from "../game/GameScene";
 
 export class Scene {
   container: PIXI.Container;
