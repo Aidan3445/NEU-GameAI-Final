@@ -27,6 +27,10 @@ export class GameScene extends Scene {
   levelPlan: string[] = [];
   startText: PIXI.Text | null = null;
 
+
+  start = new PIXI.Graphics();
+  end = new PIXI.Graphics();
+
   create() {
     this.levelPlan = level;
     const { playerStart, AIStart, platforms, levelRect, flagPoint } = buildLevel(this.levelPlan);
@@ -164,14 +168,13 @@ export class GameScene extends Scene {
           const adversary = colliders.find(body => body.id === this.adversary?.body.id);
           if (adversary && flag) {
             console.log("Adversary reached the flag");
+            this.adversary.reachedEnd = true;
           }
 
-          //  I removed: && pair.collision.normal.y <= 0. Why is this here?
           if (adversary && platform) {
+            console.log("Adversary landed on platform");
             this.adversary.land();
-            App.controllerInput.drop = false;
           }
-
         });
       });
 
@@ -218,7 +221,9 @@ export class GameScene extends Scene {
             break;
           case "Enter":
             const { AIStart, flagPoint } = buildLevel(level);
-            this.adversary.followPath(AIStart, flagPoint, level);
+            this.adversary.goToFlag(AIStart, flagPoint, level);
+            this.container.addChild(this.start);
+            this.container.addChild(this.end);
         }
       }
     });
@@ -253,6 +258,40 @@ export class GameScene extends Scene {
           });
         }
       }
+    });
+
+    window.addEventListener("mousedown", (event) => {
+      this.start.clear();
+
+      const tile = new PIXI.Point(
+        Math.floor((event.clientX - this.camera.shift.x) / App.config.tileSize),
+        Math.floor((event.clientY - this.camera.shift.y) / App.config.tileSize)
+      );
+
+      this.start.rect(
+        tile.x * App.config.tileSize,
+        tile.y * App.config.tileSize,
+        App.config.tileSize,
+        App.config.tileSize
+      );
+      this.start.stroke(0x00ff00);
+    });
+
+    window.addEventListener("mouseup", (event) => {
+      this.end.clear();
+
+      const tile = new PIXI.Point(
+        Math.floor((event.clientX - this.camera.shift.x) / App.config.tileSize),
+        Math.floor((event.clientY - this.camera.shift.y) / App.config.tileSize)
+      );
+
+      this.end.rect(
+        tile.x * App.config.tileSize,
+        tile.y * App.config.tileSize,
+        App.config.tileSize,
+        App.config.tileSize
+      );
+      this.end.stroke(0xff0000);
     });
   }
 
@@ -337,6 +376,9 @@ export class GameScene extends Scene {
 
     // Create a new adversary
     this.createAdversary(this.adversarySpawn);
+    const group = Matter.Body.nextGroup(true);
+    this.adversary.body.collisionFilter.group = group;
+    this.player.body.collisionFilter.group = group;
   }
 }
 
@@ -430,13 +472,17 @@ export const level = [
   "                                   ",
   "                                   ",
   "                                   ",
+  "           F                       ",
+  "           P   PPPPPPP             ",
+  "                                   ",
+  "                          P        ",
   "                                   ",
   "                                   ",
+  "                               P   ",
   "                                   ",
+  "                           P       ",
+  "  X A                              ",
+  "  PPPP  P  PPP  P  PPPP            ",
   "                                   ",
-  "                                   ",
-  "                               F   ",
-  "    X  A           P   P       P   ",
-  "    P  P     PPPP          P       ",
 ];
 

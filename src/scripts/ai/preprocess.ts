@@ -86,16 +86,15 @@ export function setNeighbors(
   // we are only checking X values to the left of the center rectangle
   // with a max range of roughly 1.5 * the flat jump distance (App.config.M)
   for (let x = Math.floor(App.config.M / 2); x <= Math.floor(App.config.M * 1.5); x++) {
-
     const leftX = node.point.x - x;
     const rightX = node.point.x + x;
-    const yMax = node.point.y + Math.floor((x / App.config.J) * (x - App.config.M));
+    const yMax = node.point.y + App.config.J;
     // check if the node is within the parabola up to 20 tiles below the tile
     for (let y = yMax; y <= yMax + 20; y++) {
       const nodeUnderParabolaLeft = nodes.get(getNodeKey(leftX, y));
       if (nodeUnderParabolaLeft) {
         // check if the path is clear
-        if (clearArc(node, nodeUnderParabolaLeft, levelPlan, log)) {
+        if (!clearArc(node, nodeUnderParabolaLeft, levelPlan, log)) {
           node.addNeighbor(getNodeKey(leftX, y), 10);
         }
       }
@@ -112,7 +111,7 @@ export function setNeighbors(
   //*/
 }
 
-// https://www.desmos.com/calculator/mwoejliess
+// https://www.desmos.com/calculator/kptaary8ro
 export function estimateArc(
   x: number, // input
   x1: number, // startX
@@ -133,6 +132,41 @@ export function estimateArc(
   const input = x - x1;
 
   return A * (input ** 2) + (B * input) + C;
+}
+
+export function estimateArcInverse(
+  y: number, // input
+  yVelocity: number,
+  x1: number, // startX
+  y1: number, // startY
+  x2: number, // endX
+  y2: number, // endY
+  J: number = App.config.J,
+): number {
+  const BNumRoot = Math.sqrt(-J * (-J - (y2 - y1)));
+  const BNumerator = 2 * -J - 2 * BNumRoot;
+  const BDenominator = (x2 - x1);
+  const B = BNumerator / BDenominator;
+
+  const A = -(B ** 2) / (4 * -J);
+
+  const C = y1 - y;
+
+  // Determine if we're in the up or down phase of the jump
+  const goingRight = x1 < x2;
+  const isUpPhase = yVelocity > 0;
+
+  // Choose the correct side of the parabola based on direction and phase
+  const sign = goingRight ? (isUpPhase ? 1 : -1) : (isUpPhase ? -1 : 1);
+
+  // Calculate the discriminant
+  let discriminant = B ** 2 - (4 * A * (C));
+  if (discriminant < 0) {
+    discriminant = 0;
+  }
+
+  // solve for x
+  return (-B + sign * Math.sqrt(discriminant)) / (2 * A);
 }
 
 // https://dedu.fr/projects/bresenham/

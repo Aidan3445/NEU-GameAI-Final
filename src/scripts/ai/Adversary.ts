@@ -2,7 +2,7 @@ import * as PIXI from "pixi.js";
 import Matter from "matter-js";
 import { App } from "../system/App";
 import { Node } from "./node";
-import { estimateArc, getLevelNodes, getNodeKey } from "./preprocess";
+import { estimateArc, estimateArcInverse, getLevelNodes, getNodeKey } from "./preprocess";
 
 export class Adversary {
   container: PIXI.Container;
@@ -12,20 +12,14 @@ export class Adversary {
   path: Node[] = [];
   currentPathIndex: number = 0;
   pathGraphics: PIXI.Graphics;
-  moveTimer: number = 0;
-  moveDelay: number = 30; // frames between moves
+  moveDelay: number = 500; // milliseconds 
   reachedEnd: boolean = false;
   backgroundContainer: PIXI.Container;
 
-  currentTarget: PIXI.Point = new PIXI.Point(0, 0);
-
-  started: boolean = false;
-
+  currentTarget?: PIXI.Point | null;
   canJump: boolean = false;
+  moving: boolean = false;
 
-  distanceAway: number = 0;
-
-  ticker = new PIXI.Ticker();
 
   constructor(
     start: PIXI.Point,
@@ -54,7 +48,7 @@ export class Adversary {
     this.container.addChild(this.sprite);
 
     // this is the only sprite with anchor in the center of mass
-    this.sprite.anchor.set(0.5, 0.5);
+    this.sprite.anchor.set(0.5);
   }
 
   createBody() {
@@ -101,7 +95,6 @@ export class Adversary {
 
     // Visualize the path
     this.visualizePath();
-
   }
 
   aStar(nodes: Map<string, Node>, start: Node, goal: Node): Node[] {
@@ -202,7 +195,7 @@ export class Adversary {
     let prevNode;
     for (const node of this.path) {
       // dots
-      this.pathGraphics.beginFill(0xff0000);
+      this.pathGraphics.beginFill(0xFFFF00);
       this.pathGraphics.drawCircle(
         node.point.x * App.config.tileSize + App.config.tileSize / 2,
         node.point.y * App.config.tileSize + App.config.tileSize / 2,
@@ -247,49 +240,126 @@ export class Adversary {
     return this.body.velocity;
   }
 
-  followPath(start: PIXI.Point, target: PIXI.Point, levelState: string[]) {
+  goToFlag(start: PIXI.Point, target: PIXI.Point, levelState: string[]) {
     this.calculatePath(start, target, levelState);
 
-    if (this.path.length === 0) {
-      console.error("No path to follow");
+    if (this.path.length < 2) {
+      this.noPathFound();
       return;
     }
 
+    console.log("Path found from", start, "to", target, ":", this.path);
+
+    this.reachedEnd = false;
+
     // set the current target to the first node in the path
     this.currentTarget = new PIXI.Point(
-      this.path[0].point.x * App.config.tileSize + App.config.tileSize / 2,
-      this.path[0].point.y * App.config.tileSize + App.config.tileSize / 2
+      this.path[1].point.x * App.config.tileSize + App.config.tileSize / 2,
+      this.path[1].point.y * App.config.tileSize + App.config.tileSize / 2
     );
+    this.currentPathIndex = 1;
 
+    Matter.Body.setPosition(this.body, {
+      x: this.path[0].point.x * App.config.tileSize + App.config.tileSize / 2,
+      y: this.path[0].point.y * App.config.tileSize + App.config.tileSize / 2
+    });
+
+    this.canJump = true;
+    this.moving = false;
   }
 
-  moveX() {
-  }
+  moveTowardsTarget() {
+    if (!this.currentTarget) return;
 
-  jump() {
+    const targetNode = this.path[this.currentPathIndex].point;
+    const previousNode = this.path[this.currentPathIndex - 1].point;
+
+    const currentTileY = this.body.position.y / App.config.tileSize;
+
+    // instant call (once not looped)
     if (this.canJump) {
+      // set velocity to zero for consistent jumping
       Matter.Body.setVelocity(this.body, {
-        x: this.velocity.x,
+        x: 0,
         y: 0,
       });
+
+      // apply jump force
       Matter.Body.applyForce(this.body, this.body.position, {
         x: 0,
-        y: -App.config.playerJump,
+        y: -App.config.playerJump
       });
       this.canJump = false;
+
+      this.moving = true;
+    }
+
+    // looped call every tick we are moving
+    if (this.moving) {
+      const x = estimateArcInverse(
+        currentTileY - 0.5,
+        this.body.velocity.y,
+        previousNode.x,
+        previousNode.y,
+        targetNode.x,
+        targetNode.y,
+      );
+      if (Number.isNaN(x)) {
+        this.moving = false;
+        return;
+      }
+      Matter.Body.setPosition(this.body, {
+        x: (x + previousNode.x) * App.config.tileSize + App.config.tileSize / 2,
+        y: this.body.position.y
+      });
     }
   }
 
   land() {
-    this.canJump = true;
     Matter.Body.setVelocity(this.body, {
       x: 0,
-      y: this.velocity.y,
+      y: 0
     });
+
+    if (this.moving && this.currentTarget) {
+      // check if we reached the target
+      if (Math.abs(this.currentTarget.x - this.body.position.x) < 32 &&
+        Math.abs(this.currentTarget.y - this.body.position.y) < 32) {
+        console.log('Reached target', this.path[this.currentPathIndex].point);
+        this.currentPathIndex++;
+        this.currentTarget = new PIXI.Point(
+          this.path[this.currentPathIndex].point.x * App.config.tileSize + App.config.tileSize / 2,
+          this.path[this.currentPathIndex].point.y * App.config.tileSize + App.config.tileSize / 2
+        );
+      } else {
+        console.log(
+          "Not reached target",
+          this.path[this.currentPathIndex].point,
+          this.body.position,
+          this.currentTarget,
+          Math.abs(this.currentTarget.x - this.body.position.x),
+          Math.abs(this.currentTarget.y - this.body.position.y));
+      }
+    }
+
+    setTimeout(() => {
+      this.canJump = true;
+    }, this.moveDelay);
+    this.moving = false;
   }
 
   update() {
+    if (this.currentTarget) {
+      // check if the path is finished
+      if (this.reachedEnd && this.currentTarget !== null) {
+        this.pathGraphics.clear();
+        this.currentTarget = null;
+        return;
+      }
 
+      // if we've not reached the end, move towards the target
+      this.moveTowardsTarget();
+    }
     // Keep sprite's position synced with physics body
     this.sprite.position = this.body.position;
   }
@@ -299,26 +369,26 @@ export class Adversary {
 
     /*
     const tileSize = App.config.tileSize;
- 
+   
     // 1) Convert physics position (pixels) to tile coordinates
     const currentTileX = Math.floor(this.body.position.x / tileSize);
     const currentTileY = Math.floor(
       (this.body.position.y + tileSize / 2) / tileSize
     );
- 
+   
     const targetTileX = Math.floor(this.currentTarget.x / tileSize);
     const targetTileY = Math.floor(this.currentTarget.y / tileSize);
- 
+   
     // 2) Must be on the same row to walk (otherwise we might need to jump)
     if (currentTileY !== targetTileY) {
       return false;
     }
- 
+   
     // 3) Figure out which direction we're walking (left or right)
     const step = targetTileX > currentTileX ? 1 : -1;
- 
+   
     const traversableChars = [" ", "X", "F"];
- 
+   
     // 4) Check each tile from currentTileX toward targetTileX
     for (let x = currentTileX; x !== targetTileX; x += step) {
       console.log("x", x, "currentTileY", currentTileY);
@@ -332,7 +402,7 @@ export class Adversary {
         console.log("Out of bounds222");
         return false;
       }
- 
+   
       // (b) The tile we stand in must be traversable
       // (meaning it's an open space or something that doesn't block the AI)
       const currentTileChar = this.levelPlan[currentTileY][x];
@@ -340,7 +410,7 @@ export class Adversary {
         console.log("Out of bounds2");
         return false;
       }
- 
+   
       // (c) The tile *below* must be a platform (not traversable)
       // so we have something solid to stand on
       const belowY = currentTileY + 1;
@@ -352,7 +422,7 @@ export class Adversary {
         return false; // If "below" is out of bounds or is traversable, we can't walk here
       }
     }
- 
+   
     // If we made it through the loop, all tiles are walkable with a solid floor
     return true;
     */
