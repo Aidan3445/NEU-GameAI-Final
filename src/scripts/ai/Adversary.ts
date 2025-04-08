@@ -34,6 +34,8 @@ export class Adversary {
 
   levelPlan: string[] = [];
 
+  ticker = new PIXI.Ticker();
+
   constructor(start: PIXI.Point, target: PIXI.Point, backgroundContainer: PIXI.Container, levelPlan: string[]) {
     this.container = new PIXI.Container();
     this.levelPlan = levelPlan;
@@ -47,8 +49,14 @@ export class Adversary {
 
     this.calculatePath(start, target);
 
+    Matter.Body.setPosition(this.body, {
+      x: start.x * App.config.tileSize + App.config.tileSize / 2,
+      y: start.y * App.config.tileSize + App.config.tileSize / 2
+    });
+
+
   }
-  
+
   createSprite() {
     this.sprite = App.sprite("scary");
     this.sprite.position = new PIXI.Point(0, 0);
@@ -102,6 +110,12 @@ export class Adversary {
 
     // Visualize the path
     this.visualizePath();
+
+    // set the current target to the first node in the path
+    this.currentTarget = new PIXI.Point(
+      this.path[0].point.x * App.config.tileSize + App.config.tileSize / 2,
+      this.path[0].point.y * App.config.tileSize + App.config.tileSize / 2
+    );
   }
 
   aStar(nodes: Map<string, Node>, start: Node, goal: Node): Node[] {
@@ -219,8 +233,26 @@ export class Adversary {
   }
 
   moveX() {
+    const dt = this.ticker.deltaTime;
+
+    const jumpForce = App.config.playerJump;
+    const mass = this.body.mass;
+    const verticalAcceleration = jumpForce / mass;
+
+    const v0 = verticalAcceleration * dt;
+
+
+
+
+
+    /*
     const fraction = 0.05 * this.distanceAway;
-    
+
+    if (fraction < 0.001) {
+      // If the distance is too small, stop moving
+      return;
+    }
+
     // Current position
     const currentX = this.body.position.x;
     const currentY = this.body.position.y;
@@ -237,7 +269,7 @@ export class Adversary {
       x: clampedX,
       y: currentY
     });
-  
+    */
   }
 
   jump() {
@@ -252,7 +284,7 @@ export class Adversary {
         this.contacts.reduce((acc, normal) => {
         return acc + normal.x;
       }, 0);
-      */ 
+      */
 
       Matter.Body.applyForce(this.body, this.body.position, {
         x: wallJump * App.config.playerSpeed * 0.5,
@@ -265,7 +297,7 @@ export class Adversary {
       setTimeout(() => this.jumpCooldown = false, 500);
     }
   }
-  
+
   land(normal: Matter.Vector) {
     this.canJump = true;
     this.sprite.texture = App.sprite("scary").texture;
@@ -293,40 +325,41 @@ export class Adversary {
     // 1. Calculate distance to currentTarget
     const AIx = this.body.position.x;
     const AIy = this.body.position.y + App.config.tileSize / 2;
-  
+
     const dx = this.currentTarget.x - AIx;
     const dy = this.currentTarget.y - AIy;
     const distance = Math.hypot(dx, dy);
-  
+
+    console.log('Moving to next point in path', distance, threshold, this.currentPathIndex, this.path.length);
     // If we've arrived at the currentTarget
     if (distance < threshold && this.canJump === true) {
       // Only trigger the delay if we aren't already waiting
       if (!this.waiting) {
         this.waiting = true;
-  
+
         // Wait one second, then proceed
         setTimeout(() => {
           console.log('Adversary reached the target point', this.currentTarget.x, this.currentTarget.y);
-  
+
           if (this.path.length > 0 && this.currentPathIndex < this.path.length && !this.reachedEnd) {
             const targetNode = this.path[this.currentPathIndex];
             const targetX = targetNode.point.x * App.config.tileSize + App.config.tileSize / 2;
             const targetY = targetNode.point.y * App.config.tileSize + App.config.tileSize / 2;
-  
+
             // Assign currentTarget and mark that we are moving
             this.currentTarget = new PIXI.Point(targetX, targetY);
             this.distanceAway = this.currentTarget.x - this.body.position.x;
-  
+
             // Move to the next point in the path
             this.currentPathIndex++;
-  
+
             // Check if we've reached the end of the path
             if (this.currentPathIndex >= this.path.length) {
               this.reachedEnd = true;
               console.log('Adversary reached the flag!');
             }
           }
-  
+
           // Now the AI can proceed again
           this.waiting = false;
         }, 1000);
@@ -342,56 +375,49 @@ export class Adversary {
         }
       }
     }
-  
-    // If not started yet, you can do a spawn teleport or skip if you want purely physics-based
-    if (!this.started && this.currentTarget.x !== 0.0) {
-      Matter.Body.setPosition(this.body, {
-        x: this.currentTarget.x,
-        y: this.currentTarget.y
-      });
-      this.started = true;
-    }
-  
+
     // Keep sprite's position synced with physics body
     this.sprite.position = this.body.position;
   }
 
   shouldIWalk() {
+    return false;
+
     const tileSize = App.config.tileSize;
-  
+
     // 1) Convert physics position (pixels) to tile coordinates
     const currentTileX = Math.floor(this.body.position.x / tileSize);
     const currentTileY = Math.floor(
       (this.body.position.y + tileSize / 2) / tileSize
     );
-  
+
     const targetTileX = Math.floor(this.currentTarget.x / tileSize);
     const targetTileY = Math.floor(this.currentTarget.y / tileSize);
-  
+
     // 2) Must be on the same row to walk (otherwise we might need to jump)
     if (currentTileY !== targetTileY) {
       return false;
     }
-  
+
     // 3) Figure out which direction we're walking (left or right)
     const step = targetTileX > currentTileX ? 1 : -1;
 
     const traversableChars = [' ', 'X', 'F'];
-  
+
     // 4) Check each tile from currentTileX toward targetTileX
     for (let x = currentTileX; x !== targetTileX; x += step) {
       console.log('x', x, 'currentTileY', currentTileY);
       // (a) Make sure we're inside the level bounds
       if (
-        x < 0 || 
+        x < 0 ||
         x >= this.levelPlan[0].length ||
-        currentTileY < 0 || 
+        currentTileY < 0 ||
         currentTileY >= this.levelPlan.length
       ) {
         console.log('Out of bounds222');
         return false;
       }
-  
+
       // (b) The tile we stand in must be traversable
       // (meaning it's an open space or something that doesn't block the AI)
       const currentTileChar = this.levelPlan[currentTileY][x];
@@ -399,7 +425,7 @@ export class Adversary {
         console.log('Out of bounds2');
         return false;
       }
-  
+
       // (c) The tile *below* must be a platform (not traversable)
       // so we have something solid to stand on
       const belowY = currentTileY + 1;
@@ -411,11 +437,11 @@ export class Adversary {
         return false; // If "below" is out of bounds or is traversable, we can't walk here
       }
     }
-  
+
     // If we made it through the loop, all tiles are walkable with a solid floor
     return true;
   }
-  
+
 
   destroy() {
     Matter.Composite.remove(App.physics.world, this.body);

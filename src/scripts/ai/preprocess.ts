@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js';
 import { Node } from './node';
 import { App } from '../system/App';
 
-const traversableChars = [' ', 'X', 'F', 'S'];
+const traversableChars = [' ', 'X', 'A', 'F', 'S'];
 // remove S when we implement spikes
 
 export function getNodeKey(x: number, y: number) {
@@ -11,7 +11,7 @@ export function getNodeKey(x: number, y: number) {
 
 export function getLevelNodes(levelPlan: string[], log: boolean = false) {
   const nodes: Map<string, Node> = new Map();
-  let debugPlayerStart: PIXI.Point | null = null;
+  // let debugPlayerStart: PIXI.Point | null = null;
 
   // Get all the spaces above a platform that you can stand on
   for (let y = 0; y < levelPlan.length; y++) {
@@ -19,9 +19,9 @@ export function getLevelNodes(levelPlan: string[], log: boolean = false) {
       if (!traversableChars.includes(levelPlan[y][x])) {
         const traversible = y === 0 || traversableChars.includes(levelPlan[y - 1][x]);
         if (traversible) {
-          if (levelPlan[y - 1]?.[x] === 'X') {
-            debugPlayerStart = new PIXI.Point(x, y - 1);
-          }
+          // if (levelPlan[y - 1]?.[x] === 'X') {
+          //   debugPlayerStart = new PIXI.Point(x, y - 1);
+          // }
           const node = new Node(new PIXI.Point(x, y - 1));
           const key = `${x},${y - 1}`;
           nodes.set(key, node);

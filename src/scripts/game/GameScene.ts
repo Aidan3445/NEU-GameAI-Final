@@ -17,6 +17,7 @@ export class GameScene extends Scene {
   platforms!: Platform[];
   flag!: Flag;
   adversary!: Adversary;
+  adversarySpawn!: PIXI.Point;
   gameStarted: boolean = false;
 
   // Stage of the game
@@ -28,7 +29,7 @@ export class GameScene extends Scene {
 
   create() {
     this.levelPlan = level;
-    const { playerStart, platforms, levelRect, flagPoint } = buildLevel(this.levelPlan);
+    const { playerStart, AIStart, platforms, levelRect, flagPoint } = buildLevel(this.levelPlan);
     getLevelNodes(this.levelPlan, true);
 
     this.createCamera(levelRect);
@@ -37,7 +38,8 @@ export class GameScene extends Scene {
     this.createPlayer();
     this.createFlag(flagPoint);
     this.createPlatforms(platforms);
-    this.createAdversary(playerStart, flagPoint);
+    this.adversarySpawn = AIStart;
+    this.createAdversary(AIStart, flagPoint);
 
     this.physicsEvents();
     this.keyEvents();
@@ -82,7 +84,7 @@ export class GameScene extends Scene {
 
   createAdversary(start: PIXI.Point, target: PIXI.Point) {
     // adversary starts one tile left
-    const advStart = new PIXI.Point(start.x - 1, start.y);
+    const advStart = new PIXI.Point(start.x, start.y);
     this.adversary = new Adversary(advStart, target, this.camera.bg.container, this.levelPlan);
     this.container.addChild(this.adversary.container);
     this.adversary.container.zIndex = 90;
@@ -117,10 +119,6 @@ export class GameScene extends Scene {
   }
 
   physicsEvents() {
-    // allow player and adversary to pass through each other
-    this.player.body.collisionFilter.group = -1;
-    this.adversary.body.collisionFilter.group = -1;
-
     Matter.Events.on(App.physics, 'beforeUpdate',
       () => {
         // Only allow player movement if the game has started
@@ -152,7 +150,7 @@ export class GameScene extends Scene {
           const player = colliders.find(body => body.id === this.player?.body.id);
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
           const flag = colliders.find(body => body.id === this.flag?.body.id);
-          
+
           if (player && flag) {
             console.log("Player reached the flag");
             this.resetGame();
@@ -166,8 +164,8 @@ export class GameScene extends Scene {
           const adversary = colliders.find(body => body.id === this.adversary?.body.id);
           if (adversary && flag) {
             console.log("Adversary reached the flag");
-          } 
- 
+          }
+
           //  I removed: && pair.collision.normal.y <= 0. Why is this here?
           if (adversary && platform) {
             this.adversary.land(pair.collision.normal);
@@ -195,7 +193,7 @@ export class GameScene extends Scene {
 
         });
       });
-  } 
+  }
 
   keyEvents() {
     window.addEventListener("keydown", (event) => {
@@ -260,7 +258,7 @@ export class GameScene extends Scene {
       }
     });
   }
-  
+
 
   update(dt: PIXI.Ticker) {
     if (this.player.body.position.y > this.camera.shift.height) {
@@ -343,14 +341,14 @@ export class GameScene extends Scene {
     }
 
     // Create a new adversary
-    this.createAdversary(this.playerSpawn, new PIXI.Point(
+    this.createAdversary(this.adversarySpawn, new PIXI.Point(
       this.flag.body.position.x / App.config.tileSize,
       this.flag.body.position.y / App.config.tileSize
     ));
   }
 }
 
-export const level = [
+export const tlevel = [
   "P                                                          P",
   "P                                                          P",
   "P                                                          P",
@@ -371,7 +369,7 @@ export const level = [
   "PPPP        PPPPPPPP                     P                 P",
   "P                         PPPPPP          P             PPPP",
   "P                                                          P",
-  "PPPP                                  P PPP      PPPP      P", 
+  "PPPP                                  P PPP      PPPP      P",
   "P                                                          P",
   "P             PPPPPPPPP                                    P",
   "PPPP                                                PPPPPPPP",
@@ -429,7 +427,7 @@ export const oldTestLevel = [
   "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
 ]
 
-export const rlevel = [
+export const level = [
   "                                   ",
   "                                   ",
   "                                   ",
@@ -440,13 +438,13 @@ export const rlevel = [
   "                                   ",
   "                                   ",
   "                                   ",
-  "                          F        ",
-  "                        PPP        ",
-  "                 P                 ",
-  "PPPPP                              ",
-  "                   P               ",
-  "              P                    ",
-  " X   P                             ",
-  "PP   P   P  P                      ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "    X  A     F                     ",
+  "    P  P     P                     ",
 ];
 
