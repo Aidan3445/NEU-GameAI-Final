@@ -169,6 +169,35 @@ export function estimateArcInverse(
   return (-B + sign * Math.sqrt(discriminant)) / (2 * A);
 }
 
+export function jumpArcLength(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  J: number = App.config.J,
+): number {
+  const BNumRoot = Math.sqrt(-J * (-J - (y2 - y1)));
+  const BNumerator = 2 * -J - 2 * BNumRoot;
+  const BDenominator = (x2 - x1);
+  const B = BNumerator / BDenominator;
+
+  const A = -(B ** 2) / (4 * -J);
+
+  const derivative = (x: number) => {
+    return 2 * A * x + B;
+  };
+
+  const integral = (x: number) => {
+    const logTerm = Math.log(Math.abs(Math.sqrt(derivative(x) ** 2 + 1) + derivative(x)));
+    const numerator = logTerm + derivative(x) * Math.sqrt(derivative(x) ** 2 + 1);
+    const denominator = 4 * A;
+
+    return numerator / denominator;
+  };
+
+  return Math.abs(integral(x2) - integral(x1));
+}
+
 // https://dedu.fr/projects/bresenham/
 export function clearLine(
   x1: number,

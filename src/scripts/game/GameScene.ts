@@ -138,11 +138,15 @@ export class GameScene extends Scene {
             }
           }
 
-          if (this.player.body.speed > App.config.playerMaxSpeed) {
-            Matter.Body.setVelocity(this.player.body, {
-              x: App.config.playerMaxSpeed * Math.sign(this.player.velocity.x),
-              y: Math.min(this.player.velocity.y, App.config.playerMaxFallSpeed)
-            });
+          const entities = [this.player.body, this.adversary.body];
+
+          for (const entity of entities) {
+            if (entity.speed > App.config.playerMaxSpeed) {
+              Matter.Body.setVelocity(entity, {
+                x: App.config.playerMaxSpeed * Math.sign(entity.velocity.x),
+                y: Math.min(entity.velocity.y, App.config.playerMaxFallSpeed)
+              });
+            }
           }
         }
       });
@@ -472,7 +476,7 @@ export const level = [
   "                                   ",
   "                                   ",
   "                                   ",
-  "           F                       ",
+  "                                   ",
   "           P   PPPPPPP             ",
   "                                   ",
   "                          P        ",
@@ -481,8 +485,8 @@ export const level = [
   "                               P   ",
   "                                   ",
   "                           P       ",
-  "  X A                              ",
-  "  PPPP  P  PPP  P  PPPP            ",
+  "  X A                        F     ",
+  "  PPPPPPPPPPPPPPPPPPPPPPPPPPPP     ",
   "                                   ",
 ];
 

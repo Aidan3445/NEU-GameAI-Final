@@ -191,6 +191,7 @@ export class Adversary {
 
     if (this.path.length < 2) return;
 
+    let c = 0;
     // Draw dots at each node in the path
     let prevNode;
     for (const node of this.path) {
@@ -209,29 +210,39 @@ export class Adversary {
         continue;
       }
 
-      // draw estimated jump arc
-      this.pathGraphics.moveTo(node.point.x * App.config.tileSize + App.config.tileSize / 2,
-        node.point.y * App.config.tileSize + App.config.tileSize / 2);
-      let prevX = node.point.x;
-      let prevY = node.point.y;
-      for (let x = 1; x <= 10; x++) {
-        const step = node.point.x + x * (prevNode.point.x - node.point.x) / 10;
-        const y = estimateArc(
-          step,
-          prevNode.point.x,
-          prevNode.point.y,
-          node.point.x,
-          node.point.y,
-        );
-
-        this.pathGraphics.lineTo(step * App.config.tileSize + App.config.tileSize / 2,
-          y * App.config.tileSize + App.config.tileSize / 2);
+      if (prevNode.point.y === node.point.y && Math.abs(prevNode.point.x - node.point.x) === 1) {
+        // horizontal line
+        this.pathGraphics.moveTo(prevNode.point.x * App.config.tileSize + App.config.tileSize / 2,
+          prevNode.point.y * App.config.tileSize + App.config.tileSize / 2);
+        this.pathGraphics.lineTo(node.point.x * App.config.tileSize + App.config.tileSize / 2,
+          node.point.y * App.config.tileSize + App.config.tileSize / 2);
         this.pathGraphics.stroke({ color: 0xFFFF00, pixelLine: true });
-        prevX = step;
-        prevY = y;
+      } else {
+        // draw estimated jump arc
+        this.pathGraphics.moveTo(node.point.x * App.config.tileSize + App.config.tileSize / 2,
+          node.point.y * App.config.tileSize + App.config.tileSize / 2);
+        let prevX = node.point.x;
+        let prevY = node.point.y;
+        for (let x = 1; x <= 10; x++) {
+          const step = node.point.x + x * (prevNode.point.x - node.point.x) / 10;
+          const y = estimateArc(
+            step,
+            prevNode.point.x,
+            prevNode.point.y,
+            node.point.x,
+            node.point.y,
+          );
+
+          this.pathGraphics.lineTo(step * App.config.tileSize + App.config.tileSize / 2,
+            y * App.config.tileSize + App.config.tileSize / 2);
+          this.pathGraphics.stroke({ color: 0xFFFF00, pixelLine: true });
+          prevX = step;
+          prevY = y;
+        }
       }
 
       prevNode = node;
+      c++;
     }
   }
 
@@ -274,8 +285,24 @@ export class Adversary {
     const targetNode = this.path[this.currentPathIndex].point;
     const previousNode = this.path[this.currentPathIndex - 1].point;
 
-    const currentTileY = this.body.position.y / App.config.tileSize;
+    const direction = targetNode.x - previousNode.x;
+    if (targetNode.y === previousNode.y && Math.abs(direction) === 1) {
+      this.walk(direction);
+    } else {
+      this.jump(targetNode, previousNode);
+    }
+  }
 
+  walk(xDir: number) {
+    Matter.Body.applyForce(this.body, this.body.position, {
+      x: xDir * App.config.playerSpeed,
+      y: 0
+    });
+  }
+
+  jump(targetNode: PIXI.Point, previousNode: PIXI.Point) {
+
+    const currentTileY = this.body.position.y / App.config.tileSize;
     // instant call (once not looped)
     if (this.canJump) {
       // set velocity to zero for consistent jumping
@@ -314,6 +341,7 @@ export class Adversary {
       });
     }
   }
+
 
   land() {
     Matter.Body.setVelocity(this.body, {
@@ -362,70 +390,6 @@ export class Adversary {
     }
     // Keep sprite's position synced with physics body
     this.sprite.position = this.body.position;
-  }
-
-  shouldIWalk() {
-    return false;
-
-    /*
-    const tileSize = App.config.tileSize;
-   
-    // 1) Convert physics position (pixels) to tile coordinates
-    const currentTileX = Math.floor(this.body.position.x / tileSize);
-    const currentTileY = Math.floor(
-      (this.body.position.y + tileSize / 2) / tileSize
-    );
-   
-    const targetTileX = Math.floor(this.currentTarget.x / tileSize);
-    const targetTileY = Math.floor(this.currentTarget.y / tileSize);
-   
-    // 2) Must be on the same row to walk (otherwise we might need to jump)
-    if (currentTileY !== targetTileY) {
-      return false;
-    }
-   
-    // 3) Figure out which direction we're walking (left or right)
-    const step = targetTileX > currentTileX ? 1 : -1;
-   
-    const traversableChars = [" ", "X", "F"];
-   
-    // 4) Check each tile from currentTileX toward targetTileX
-    for (let x = currentTileX; x !== targetTileX; x += step) {
-      console.log("x", x, "currentTileY", currentTileY);
-      // (a) Make sure we're inside the level bounds
-      if (
-        x < 0 ||
-        x >= this.levelPlan[0].length ||
-        currentTileY < 0 ||
-        currentTileY >= this.levelPlan.length
-      ) {
-        console.log("Out of bounds222");
-        return false;
-      }
-   
-      // (b) The tile we stand in must be traversable
-      // (meaning it's an open space or something that doesn't block the AI)
-      const currentTileChar = this.levelPlan[currentTileY][x];
-      if (!traversableChars.includes(currentTileChar)) {
-        console.log("Out of bounds2");
-        return false;
-      }
-   
-      // (c) The tile *below* must be a platform (not traversable)
-      // so we have something solid to stand on
-      const belowY = currentTileY + 1;
-      if (
-        belowY >= this.levelPlan.length ||
-        this.levelPlan[belowY][x] !== "P"
-      ) {
-        console.log("Out of bounds3");
-        return false; // If "below" is out of bounds or is traversable, we can't walk here
-      }
-    }
-   
-    // If we made it through the loop, all tiles are walkable with a solid floor
-    return true;
-    */
   }
 
   destroy() {
