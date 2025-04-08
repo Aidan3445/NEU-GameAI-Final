@@ -2,7 +2,7 @@ import * as PIXI from "pixi.js";
 import { App } from "../system/App";
 import Matter from "matter-js";
 
-export class Flag {
+export class Spike {
   container: PIXI.Container;
   sprite!: PIXI.Sprite;
   body!: Matter.Body;
@@ -25,12 +25,10 @@ export class Flag {
   }
 
   createSprite(point: PIXI.Point) {
-    this.sprite = App.sprite("flag");
-
+    this.sprite = App.sprite("spikes");
     this.sprite.setSize(App.config.tileSize);
     this.container.addChild(this.sprite);
   }
-
 
   createBody(point: PIXI.Point) {
     this.body = Matter.Bodies.rectangle(

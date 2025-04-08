@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js';
 import { Node } from './node';
 import { App } from '../system/App';
 
-const traversableChars = [' ', 'X', 'F', 'S'];
+const traversableChars = [' ', 'X', 'A', 'F', 'S'];
 // remove S when we implement spikes
 
 export function getNodeKey(x: number, y: number) {
@@ -11,7 +11,7 @@ export function getNodeKey(x: number, y: number) {
 
 export function getLevelNodes(levelPlan: string[], log: boolean = false) {
   const nodes: Map<string, Node> = new Map();
-  let debugPlayerStart: PIXI.Point | null = null;
+  // let debugPlayerStart: PIXI.Point | null = null;
 
   // Get all the spaces above a platform that you can stand on
   for (let y = 0; y < levelPlan.length; y++) {
@@ -19,9 +19,9 @@ export function getLevelNodes(levelPlan: string[], log: boolean = false) {
       if (!traversableChars.includes(levelPlan[y][x])) {
         const traversible = y === 0 || traversableChars.includes(levelPlan[y - 1][x]);
         if (traversible) {
-          if (levelPlan[y - 1]?.[x] === 'X') {
-            debugPlayerStart = new PIXI.Point(x, y - 1);
-          }
+          // if (levelPlan[y - 1]?.[x] === 'X') {
+          //   debugPlayerStart = new PIXI.Point(x, y - 1);
+          // }
           const node = new Node(new PIXI.Point(x, y - 1));
           const key = `${x},${y - 1}`;
           nodes.set(key, node);
@@ -74,7 +74,10 @@ export function setNeighbors(
       if (nodeInCenterRect) {
         // check if the path is clear
         if (clearArc(node, nodeInCenterRect, levelPlan, log)) {
-          node.addNeighbor(getNodeKey(x, y), 10);
+          node.addNeighbor(
+            getNodeKey(x, y),
+            jumpArcLength(node.point.x, node.point.y, x, y, App.config.J),
+          );
           break;
         }
       }
@@ -86,17 +89,19 @@ export function setNeighbors(
   // we are only checking X values to the left of the center rectangle
   // with a max range of roughly 1.5 * the flat jump distance (App.config.M)
   for (let x = Math.floor(App.config.M / 2); x <= Math.floor(App.config.M * 1.5); x++) {
-
     const leftX = node.point.x - x;
     const rightX = node.point.x + x;
-    const yMax = node.point.y + Math.floor((x / App.config.J) * (x - App.config.M));
+    const yMax = node.point.y + App.config.J;
     // check if the node is within the parabola up to 20 tiles below the tile
     for (let y = yMax; y <= yMax + 20; y++) {
       const nodeUnderParabolaLeft = nodes.get(getNodeKey(leftX, y));
       if (nodeUnderParabolaLeft) {
         // check if the path is clear
-        if (clearArc(node, nodeUnderParabolaLeft, levelPlan, log)) {
-          node.addNeighbor(getNodeKey(leftX, y), 10);
+        if (!clearArc(node, nodeUnderParabolaLeft, levelPlan, log)) {
+          node.addNeighbor(
+            getNodeKey(leftX, y),
+            jumpArcLength(node.point.x, node.point.y, leftX, y, App.config.J),
+          );
         }
       }
 
@@ -104,7 +109,10 @@ export function setNeighbors(
       if (nodeUnderParabolaRight) {
         // check if the path is clear
         if (clearArc(node, nodeUnderParabolaRight, levelPlan, log)) {
-          node.addNeighbor(getNodeKey(rightX, y), 10);
+          node.addNeighbor(
+            getNodeKey(rightX, y),
+            jumpArcLength(node.point.x, node.point.y, rightX, y, App.config.J),
+          );
         }
       }
     }
@@ -112,14 +120,14 @@ export function setNeighbors(
   //*/
 }
 
-// https://www.desmos.com/calculator/mwoejliess
+// https://www.desmos.com/calculator/kptaary8ro
 export function estimateArc(
   x: number, // input
   x1: number, // startX
   y1: number, // startY
   x2: number, // endX
   y2: number, // endY
-  J: number, // max jump height
+  J: number = App.config.J,
 ): number {
   const BNumRoot = Math.sqrt(-J * (-J - (y2 - y1)));
   const BNumerator = 2 * -J - 2 * BNumRoot;
@@ -133,6 +141,70 @@ export function estimateArc(
   const input = x - x1;
 
   return A * (input ** 2) + (B * input) + C;
+}
+
+export function estimateArcInverse(
+  y: number, // input
+  yVelocity: number,
+  x1: number, // startX
+  y1: number, // startY
+  x2: number, // endX
+  y2: number, // endY
+  J: number = App.config.J,
+): number {
+  const BNumRoot = Math.sqrt(-J * (-J - (y2 - y1)));
+  const BNumerator = 2 * -J - 2 * BNumRoot;
+  const BDenominator = (x2 - x1);
+  const B = BNumerator / BDenominator;
+
+  const A = -(B ** 2) / (4 * -J);
+
+  const C = y1 - y;
+
+  // Determine if we're in the up or down phase of the jump
+  const goingRight = x1 < x2;
+  const isUpPhase = yVelocity > 0;
+
+  // Choose the correct side of the parabola based on direction and phase
+  const sign = goingRight ? (isUpPhase ? 1 : -1) : (isUpPhase ? -1 : 1);
+
+  // Calculate the discriminant
+  let discriminant = B ** 2 - (4 * A * (C));
+  if (discriminant < 0) {
+    discriminant = 0;
+  }
+
+  // solve for x
+  return (-B + sign * Math.sqrt(discriminant)) / (2 * A);
+}
+
+export function jumpArcLength(
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  J: number = App.config.J,
+): number {
+  const BNumRoot = Math.sqrt(-J * (-J - (y2 - y1)));
+  const BNumerator = 2 * -J - 2 * BNumRoot;
+  const BDenominator = (x2 - x1);
+  const B = BNumerator / BDenominator;
+
+  const A = -(B ** 2) / (4 * -J);
+
+  const derivative = (x: number) => {
+    return 2 * A * x + B;
+  };
+
+  const integral = (x: number) => {
+    const logTerm = Math.log(Math.abs(Math.sqrt(derivative(x) ** 2 + 1) + derivative(x)));
+    const numerator = logTerm + derivative(x) * Math.sqrt(derivative(x) ** 2 + 1);
+    const denominator = 4 * A;
+
+    return numerator / denominator;
+  };
+
+  return Math.abs(integral(x2) - integral(x1));
 }
 
 // https://dedu.fr/projects/bresenham/
@@ -269,7 +341,6 @@ export function clearArc(
       node.point.y,
       node2.point.x,
       node2.point.y,
-      App.config.J,
     );
 
     if (!clearLine(
