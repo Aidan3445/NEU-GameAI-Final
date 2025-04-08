@@ -24,6 +24,7 @@ export class GameScene extends Scene {
   flag!: Flag;
   adversary!: Adversary;
   gameStarted: boolean = false;
+  adversaryStart!: PIXI.Point;
 
   // Game stages
   // 0: Item selection phase - player selects an item
@@ -50,7 +51,7 @@ export class GameScene extends Scene {
 
   create() {
     this.levelPlan = level;
-    const { playerStart, platforms, spikes, levelRect, flagPoint } = buildLevel(this.levelPlan);
+    const { playerStart, AIStart, platforms, spikes, levelRect, flagPoint } = buildLevel(this.levelPlan);
     getLevelNodes(this.levelPlan, true);
 
     this.createCamera(levelRect);
@@ -59,6 +60,7 @@ export class GameScene extends Scene {
     this.createFlag(flagPoint);
     this.createPlatforms(platforms);
     this.createSpikes(spikes);
+    this.adversaryStart = AIStart;
 
     this.createItemButtons();
 
@@ -66,17 +68,10 @@ export class GameScene extends Scene {
     this.spawn(this.playerSpawn)
     this.disablePlayerMovement();
 
+    this.createAdversary(AIStart);
+
     this.physicsEvents();
     this.keyEvents();
-
-    // this.enablePlayerMovement()
-    // this.createAdversary(this.playerSpawn, this.flagPoint);
-
-    // this.gameStage = 3;
-
-    // // Initially place the player but don't allow movement yet
-    // this.spawn(this.playerSpawn);
-    // this.disablePlayerMovement();
   }
 
   createCamera(levelRect: PIXI.Rectangle) {
@@ -128,10 +123,9 @@ export class GameScene extends Scene {
     platform.container.zIndex = 50;
   }
 
-  createAdversary(start: PIXI.Point, target: PIXI.Point) {
-    // adversary starts one tile left
-    const advStart = new PIXI.Point(start.x - 1, start.y);
-    this.adversary = new Adversary(advStart, target, this.camera.bg.container, this.levelPlan);
+  createAdversary(start: PIXI.Point) {
+    const advStart = new PIXI.Point(start.x, start.y);
+    this.adversary = new Adversary(advStart, this.camera.bg.container);
     this.container.addChild(this.adversary.container);
     this.adversary.container.zIndex = 90;
   }
@@ -163,6 +157,10 @@ export class GameScene extends Scene {
   }
 
   physicsEvents() {
+    const group = Matter.Body.nextGroup(true);
+    this.adversary.body.collisionFilter.group = group;
+    this.player.body.collisionFilter.group = group;
+
     Matter.Events.on(App.physics, 'beforeUpdate',
       () => {
         // Only allow player movement if the game has started and player is not trapped
@@ -220,9 +218,8 @@ export class GameScene extends Scene {
             this.resetGame();
           } 
  
-          //  I removed: && pair.collision.normal.y <= 0. Why is this here?
           if (adversary && platform) {
-            this.adversary.land(pair.collision.normal);
+            this.adversary.land();
             App.controllerInput.drop = false;
           }
 
@@ -250,11 +247,6 @@ export class GameScene extends Scene {
             // add delay for more forgiving platforming
             setTimeout(() => this.player.leftPlatform(pair.collision.normal), 100);
           }
-
-          if (adversary && platform) {
-            setTimeout(() => this.adversary.leftPlatform(pair.collision.normal), 100);
-          }
-
 
         });
       });
@@ -347,16 +339,7 @@ export class GameScene extends Scene {
     if (this.gameStage === 3) {
       console.log('GAME STAGE is 3')
       this.enablePlayerMovement()
-      // this.physicsEvents();
-      // this.keyEvents();
-      this.createAdversary(this.playerSpawn, this.flagPoint);
-      const group = Matter.Body.nextGroup(true);
-      this.adversary.body.collisionFilter.group = group;
-      this.player.body.collisionFilter.group = group;
-      // const group = Matter.Body.nextGroup(true);
-      // this.adversary.body.collisionFilter.group = group;
-      // this.player.body.collisionFilter.group = group;
-  
+      this.adversary.goToFlag(this.adversaryStart, this.flagPoint, this.levelPlan);
       return;
     }
 
@@ -414,10 +397,7 @@ export class GameScene extends Scene {
     }
 
     // Create a new adversary
-    this.createAdversary(this.playerSpawn, new PIXI.Point(
-      this.flag.body.position.x / App.config.tileSize,
-      this.flag.body.position.y / App.config.tileSize
-    ));
+    this.createAdversary(this.adversaryStart);
     
     // Start item selection again
     this.createItemButtons();

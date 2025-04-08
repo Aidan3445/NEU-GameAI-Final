@@ -22,7 +22,7 @@ export class Config {
   // magic numbers for the parabola
   // Make sure to adjust these when changing any of
   // playerSpped, playerJump, or playerMaxSpeed
-  static J = 6;  // inversely proportional to the jump height
+  static J = 5;  // roughly the max jump height
   static M = 11; // roughly the max flat jump distance
 }
 
