@@ -4,6 +4,7 @@ import { App } from '../system/App';
 import { Node } from './node';
 import { getLevelNodes, getNodeKey } from './preprocess';
 import { level } from '../game/GameScene';
+import { ItemSelector, ItemType } from './ItemSelector';
 
 export class Adversary {
   container: PIXI.Container;
@@ -33,6 +34,11 @@ export class Adversary {
   waiting: boolean = false;
 
   levelPlan: string[] = [];
+  
+  // Item selection related properties
+  itemSelector: ItemSelector;
+  selectedItem: ItemType | null = null;
+  flagPosition: PIXI.Point | null = null;
 
   constructor(start: PIXI.Point, target: PIXI.Point, backgroundContainer: PIXI.Container, levelPlan: string[]) {
     this.container = new PIXI.Container();
@@ -46,7 +52,10 @@ export class Adversary {
     backgroundContainer.addChild(this.pathGraphics);
 
     this.calculatePath(start, target);
-
+    
+    // Initialize item selector
+    this.itemSelector = new ItemSelector();
+    this.flagPosition = target;
   }
   
   createSprite() {
@@ -259,7 +268,7 @@ export class Adversary {
         y: -App.config.playerJump
       });
       this.canJump = false;
-      this.sprite.texture = App.res("scary");
+      this.sprite.texture = App.sprite("scary").texture;
 
       this.jumpCooldown = true;
       setTimeout(() => this.jumpCooldown = false, 500);
@@ -440,5 +449,90 @@ export class Adversary {
     this.pathGraphics.lineTo(x + size / 2, y + size / 2);
     this.pathGraphics.moveTo(x + size / 2, y - size / 2);
     this.pathGraphics.lineTo(x - size / 2, y + size / 2);
+  }
+
+  /**
+   * Choose which item to pick based on player's selection
+   * @param playerItem The item selected by the player
+   * @param playerPosition Player's current position
+   * @returns The AI's selected item
+   */
+  selectItem(playerItem: ItemType, playerPosition: PIXI.Point): ItemType {
+    if (!this.flagPosition) {
+      // Fallback logic if flag position is not set
+      const remainingItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes].filter(
+        item => item !== playerItem
+      );
+      this.selectedItem = remainingItems[Math.floor(Math.random() * remainingItems.length)];
+      return this.selectedItem;
+    }
+    
+    const aiPosition = new PIXI.Point(
+      this.body.position.x / App.config.tileSize,
+      this.body.position.y / App.config.tileSize
+    );
+    
+    this.selectedItem = this.itemSelector.selectItem(
+      playerItem,
+      this.levelPlan,
+      playerPosition,
+      aiPosition,
+      this.flagPosition
+    );
+    
+    return this.selectedItem;
+  }
+  
+  /**
+   * Determine the best position to place the selected item
+   * @returns Position to place the item
+   */
+  determineItemPlacement(): PIXI.Point {
+    // This is a placeholder. In a real implementation, you would use
+    // pathfinding and game state analysis to determine the optimal placement.
+    
+    if (!this.selectedItem || !this.flagPosition) {
+      // Return a random position near the AI if no item or flag
+      return new PIXI.Point(
+        Math.floor(this.body.position.x / App.config.tileSize) + Math.floor(Math.random() * 3) - 1,
+        Math.floor(this.body.position.y / App.config.tileSize) + 1
+      );
+    }
+    
+    const aiPosition = new PIXI.Point(
+      Math.floor(this.body.position.x / App.config.tileSize),
+      Math.floor(this.body.position.y / App.config.tileSize)
+    );
+    
+    switch (this.selectedItem) {
+      case ItemType.Platform:
+        // Place platform to help reach the flag
+        // Find a spot between AI and flag
+        const directionX = Math.sign(this.flagPosition.x - aiPosition.x);
+        return new PIXI.Point(
+          aiPosition.x + directionX * 3,
+          aiPosition.y - 2
+        );
+        
+      case ItemType.Bomb:
+        // Find a platform to remove that would hinder the player
+        // This is a simplified approach - a more sophisticated implementation
+        // would analyze the level structure
+        return new PIXI.Point(
+          aiPosition.x + 5,
+          aiPosition.y
+        );
+        
+      case ItemType.Spikes:
+        // Place spikes on a platform the player is likely to use
+        // Again, this is simplified
+        return new PIXI.Point(
+          this.flagPosition.x - 2,
+          this.flagPosition.y + 1
+        );
+    }
+    
+    // Fallback position
+    return aiPosition;
   }
 } 
