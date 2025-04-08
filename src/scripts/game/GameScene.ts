@@ -408,37 +408,34 @@ export class GameScene extends Scene {
     // change this list to add more items to the selection
     const allItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes];
     this.availableItems = [];
-    this.availableItems = [];
     for (let i = 0; i < 3; i++) {
       const randomIndex = Math.floor(Math.random() * allItems.length);
       this.availableItems.push(allItems[randomIndex]);
     }
     this.itemSelectionUI = new PIXI.Container();
 
-
-
     // Create the buttons
     for (let i = 0; i < this.availableItems.length; i++) {
       const button = new ItemButton(this.availableItems[i], i);
+      const itemValue = this.availableItems[i]; // Store the current item
+      const itemIndex = i; // Store the current index
+      
       button.bg.on('pointerdown', () => {
-        // only allow this to be hit when the game stage = 0
         if (this.gameStage === 0) {
-          console.log('Item selected:', this.availableItems[i]);
-          this.playerItem = this.availableItems[i];
-
-          // remove this item from the array of items
-          this.availableItems.splice(i, 1);
-
-          // init phase 1
+          console.log('Item selected:', itemValue);
+          this.playerItem = itemValue;
+          
+          // Remove this item from the array of items
+          this.availableItems.splice(this.availableItems.indexOf(itemValue), 1);
+          
           this.gameStage = 1;
         }
-        // else do nothing
       });
       this.itemSelectionUI.addChild(button.button);
-  }
+    }
 
-  this.container.addChild(this.itemSelectionUI);
-}
+    this.container.addChild(this.itemSelectionUI);
+  }
   
   /**
    * AI selects an item using the behavior tree
@@ -453,7 +450,7 @@ export class GameScene extends Scene {
     
     // TODO: change this to use the behavior tree
     // this.aiItem = this.adversary.selectItem(this.availableItems, this.playerItem, playerPosition);
-    this.aiItem = this.selectItemUsingBehaviorTree();
+    this.aiItem = this.selectItemUsingBehaviorTree(this.availableItems);
 
     // Create info text about AI's selection
     const aiSelectionText = new PIXI.Text({
@@ -681,13 +678,13 @@ export class GameScene extends Scene {
   /**
    * Uses the behavior tree to select an item for the AI
    */
-  selectItemUsingBehaviorTree(): ItemType {
+  selectItemUsingBehaviorTree(availableItems: ItemType[]): ItemType {
     const playerPosition = this.playerSpawn;
     const aiPosition = this.adversaryStart;
     const flagPosition = this.flagPoint;
     
     // Create an instance of ItemSelector and use it to select an item using the behavior tree
-    const itemSelector = new ItemSelector();
+    const itemSelector = new ItemSelector(availableItems);
     return itemSelector.selectItem(
       this.playerItem!, 
       this.levelPlan, 
