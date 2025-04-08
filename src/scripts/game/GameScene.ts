@@ -11,6 +11,11 @@ import { Adversary } from '../ai/Adversary';
 import { getLevelNodes } from '../ai/preprocess';
 import { ItemType } from '../ai/ItemSelector';
 
+import { Spike } from './Spike';
+import { ItemButton } from './ItemButton';
+// import { PixiPlugin } from 'gsap/all';
+import { level, oldTestLevel, rlevel } from './levels';
+ 
 export class GameScene extends Scene {
   camera!: Camera;
   player!: Player;
@@ -30,51 +35,54 @@ export class GameScene extends Scene {
   gameStage: number = 0;
   levelPlan: string[] = [];
   startText: PIXI.Text | null = null;
-  
+
+  spikes: Spike[] = [];
+
   // Item selection related properties
   availableItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes];
   playerItem: ItemType | null = null;
   aiItem: ItemType | null = null;
-  itemButtons: PIXI.Container[] = [];
-  itemSelectionUI: PIXI.Container | null = null;
+  itemSelectionUI!: PIXI.Container;
   itemPlacementActive: boolean = false;
   itemPlacementPreview: PIXI.Graphics | null = null;
   selectedPlatforms: Platform[] = [];
   flagPoint!: PIXI.Point;
   placementText: PIXI.Text | null = null;
-  // Track spike locations for collision detection
-  spikeLocations: {x: number, y: number, width: number, height: number}[] = [];
-  playerTrapped: boolean = false;
-  trapTimer: number = 0;
-  activeSpikeIndex: number = -1; // Track which spike trapped the player
-  spikesGraphicsObjects: PIXI.Graphics[] = []; // Track the graphics objects for spikes
 
   create() {
     this.levelPlan = level;
-    const { playerStart, platforms, levelRect, flagPoint } = buildLevel(this.levelPlan);
+    const { playerStart, platforms, spikes, levelRect, flagPoint } = buildLevel(this.levelPlan);
     getLevelNodes(this.levelPlan, true);
 
     this.createCamera(levelRect);
     this.flagPoint = flagPoint;
     this.playerSpawn = playerStart;
-    this.createPlayer();
     this.createFlag(flagPoint);
     this.createPlatforms(platforms);
-    this.createAdversary(playerStart, flagPoint);
+    this.createSpikes(spikes);
+
+    this.createItemButtons();
+
+    this.createPlayer();
+    this.spawn(this.playerSpawn)
+    this.disablePlayerMovement();
 
     this.physicsEvents();
     this.keyEvents();
 
-    // Initially place the player but don't allow movement yet
-    this.spawn(this.playerSpawn);
-    this.disablePlayerMovement();
+    this.enablePlayerMovement()
+    this.createAdversary(this.playerSpawn, this.flagPoint);
+
+    // this.gameStage = 3;
+
+    // // Initially place the player but don't allow movement yet
+    // this.spawn(this.playerSpawn);
+    // this.disablePlayerMovement();
 
     const group = Matter.Body.nextGroup(true);
     this.adversary.body.collisionFilter.group = group;
     this.player.body.collisionFilter.group = group;
     
-    // Start with item selection UI
-    this.createItemSelectionUI();
   }
 
   createCamera(levelRect: PIXI.Rectangle) {
@@ -93,8 +101,22 @@ export class GameScene extends Scene {
   createFlag(flagPoint: PIXI.Point) {
     this.flag = new Flag(flagPoint);
     this.container.addChild(this.flag.container);
-
     this.flag.container.zIndex = 75;
+  }
+
+  createSpikes(spikes: PIXI.Point[]) {
+    this.spikes = spikes.map((spike) => {
+      const s = new Spike(spike);
+      this.container.addChild(s.container);
+      s.container.zIndex = 50;
+      return s;
+    });
+  }
+
+  addSpike(spike: Spike) {
+    this.spikes.push(spike);
+    this.container.addChild(spike.container);
+    spike.container.zIndex = 50;
   }
 
   createPlatforms(platforms: PIXI.Rectangle[]) {
@@ -104,6 +126,12 @@ export class GameScene extends Scene {
       p.container.zIndex = 50;
       return p;
     });
+  }
+
+  addPlatform(platform: Platform) {
+    this.platforms.push(platform);
+    this.container.addChild(platform.container);
+    platform.container.zIndex = 50;
   }
 
   createAdversary(start: PIXI.Point, target: PIXI.Point) {
@@ -133,24 +161,20 @@ export class GameScene extends Scene {
     App.controllerInput.right = false;
     App.controllerInput.jump = false;
     App.controllerInput.drop = false;
-    this.gameStarted = false;
   }
 
   // Enable player movement
   enablePlayerMovement() {
-    this.gameStarted = true;
     this.gameStage = 5;
   }
 
   physicsEvents() {
-    // allow player and adversary to pass through each other
-    this.player.body.collisionFilter.group = -1;
-    this.adversary.body.collisionFilter.group = -1;
+    console.log('we are in physicsEvents')
 
     Matter.Events.on(App.physics, 'beforeUpdate',
       () => {
         // Only allow player movement if the game has started and player is not trapped
-        if (this.gameStage === 5 && !this.playerTrapped) {
+        if (this.gameStage === 5) {
           if (App.controllerInput.drop && !this.player.canJump) {
             this.player.drop();
             App.controllerInput.drop = false;
@@ -175,29 +199,44 @@ export class GameScene extends Scene {
       (event: Matter.IEventCollision<Matter.Engine>) => {
         event.pairs.forEach((pair) => {
           const colliders = [pair.bodyA, pair.bodyB];
+
           const player = colliders.find(body => body.id === this.player?.body.id);
+          const adversary = colliders.find(body => body.id === this.adversary?.body.id);
+
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
           const flag = colliders.find(body => body.id === this.flag?.body.id);
-          
+          const spike = colliders.find(body => this.spikes.some(s => s.body.id === body.id));
+
           if (player && flag) {
-            console.log("Player reached the flag");
+            console.log("Player won!");
             this.resetGame();
           }
 
+          if (player && platform) {
+            console.log(player.position.x, player.position.y, pair, platform.position.x, platform.position.y);
+          }
+          
           if (player && platform && pair.collision.normal.y <= 0) {
+            console.log('player landing')
             this.player.land(pair.collision.normal);
             App.controllerInput.drop = false;
           }
 
-          const adversary = colliders.find(body => body.id === this.adversary?.body.id);
           if (adversary && flag) {
-            console.log("Adversary reached the flag");
+            console.log("Adversary won!");
+            this.resetGame();
           } 
  
           //  I removed: && pair.collision.normal.y <= 0. Why is this here?
           if (adversary && platform) {
             this.adversary.land(pair.collision.normal);
             App.controllerInput.drop = false;
+          }
+
+          if (player && spike) { 
+            // somehow lag player behind
+            console.log("AI won, player died");
+            this.resetGame();
           }
 
         });
@@ -207,17 +246,22 @@ export class GameScene extends Scene {
       (event: Matter.IEventCollision<Matter.Engine>) => {
         event.pairs.forEach((pair) => {
           const colliders = [pair.bodyA, pair.bodyB];
+
           const player = colliders.find(body => body.id === this.player?.body.id);
+          const adversary = colliders.find(body => body.id === this.adversary?.body.id);
+
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
+          const spike = colliders.find(body => this.spikes.some(s => s.body.id === body.id));
+          
           if (player && platform) {
             // add delay for more forgiving platforming
             setTimeout(() => this.player.leftPlatform(pair.collision.normal), 100);
           }
 
-          const adversary = colliders.find(body => body.id === this.adversary?.body.id);
           if (adversary && platform) {
             setTimeout(() => this.adversary.leftPlatform(pair.collision.normal), 100);
           }
+
 
         });
       });
@@ -225,13 +269,8 @@ export class GameScene extends Scene {
 
   keyEvents() {
     window.addEventListener("keydown", (event) => {
-      // Start the game when any key is pressed during pathfinding stage
-      if (this.gameStage === 4 && this.adversary.reachedEnd && !this.gameStarted) {
-        this.enablePlayerMovement();
-      }
-
       // Only register key events if the game has started and we're in player movement stage
-      if (this.gameStarted && this.gameStage === 5) {
+      if (this.gameStage === 5) {
         switch (event.key) {
           case "ArrowLeft":
           case "a":
@@ -256,7 +295,7 @@ export class GameScene extends Scene {
 
     window.addEventListener("keyup", (event) => {
       // Only register key events if the game has started
-      if (this.gameStarted) {
+      if (this.gameStage === 5) {
         switch (event.key) {
           case "ArrowLeft":
           case "a":
@@ -277,7 +316,9 @@ export class GameScene extends Scene {
             break;
         }
 
+        console.log(!App.controllerInput.left, !App.controllerInput.right, this.player.canJump)
         if (!App.controllerInput.left && !App.controllerInput.right && this.player.canJump) {
+          console.log('jumping')
           Matter.Body.setVelocity(this.player.body, {
             x: 0,
             y: this.player.velocity.y
@@ -289,143 +330,71 @@ export class GameScene extends Scene {
   
 
   update(dt: PIXI.Ticker) {
+    // console.log(this.itemSelectionUI)
+
+    // this is the starting game stage, player has not chosen an item yet
+    // if (this.gameStage === 0) {
+    //   return;
+    // }
+
+    // // move gameStage forward to AI picking
+    // if (this.gameStage === 1) {
+    //   this.container.removeChild(this.itemSelectionUI!);
+    //   // selectAIItem will increase gameStage once the AI picks the item
+    //   this.selectAIItem();
+    //   return;
+    // }
+
+    // if (this.gameStage === 2) {
+    //   // Move to AI placement phase
+    //   this.startItemPlacement();
+    //   return;
+    // }
+
+    // if (this.gameStage === 3) {
+    //   console.log('GAME STAGE is 3')
+    //   this.enablePlayerMovement()
+    //   // this.physicsEvents();
+    //   // this.keyEvents();
+    //   this.createAdversary(this.playerSpawn, this.flagPoint);
+    //   // const group = Matter.Body.nextGroup(true);
+    //   // this.adversary.body.collisionFilter.group = group;
+    //   // this.player.body.collisionFilter.group = group;
+  
+    //   return;
+    // }
+
     if (this.player.body.position.y > this.camera.shift.height) {
       console.log("Player fell off the map", this.playerSpawn.x, this.playerSpawn.y,
         this.player.body.position.x, this.player.body.position.y);
       this.spawn(this.playerSpawn);
-      this.camera.state = new PIXI.Point(0, 0);
+      // this.camera.state = new PIXI.Point(0, 0);
     }
 
     super.update(dt)
 
     // Update the camera based on the current game stage
-    if (this.gameStage <= 4) {
-      this.camera.update(this.adversary.body);
-    } else {
-      this.camera.update(this.player.body);
-    }
+    // if (this.gameStage <= 4) {
+    //   this.camera.update(this.adversary.body);
+    // } else {
+    //   this.camera.update(this.player.body);
+    // }
 
     this.platforms.forEach((platform) => {
-      this.camera.apply(platform.body);
+      // this.camera.apply(platform.body);
       platform.update();
     });
 
-    this.camera.apply(this.player.body);
+    // this.camera.apply(this.player.body);
     this.player.update();
 
-    this.camera.apply(this.flag.body);
+    // this.camera.apply(this.flag.body);
     this.flag.update();
 
     // Update the adversary
-    this.camera.apply(this.adversary.body);
+    // this.camera.apply(this.adversary.body);
     this.adversary.update();
-    
-    // Check for spike collisions during gameplay
-    if (this.gameStage === 5 && this.spikeLocations.length > 0 && !this.playerTrapped) {
-      const playerX = this.player.body.position.x;
-      const playerY = this.player.body.position.y;
-      const playerWidth = this.player.sprite.width * 0.8; // Use 80% of width for better hit detection
-      const playerHeight = this.player.sprite.height * 0.8;
-      
-      // Check if player is on any spike
-      for (let i = 0; i < this.spikeLocations.length; i++) {
-        const spike = this.spikeLocations[i];
-        if (this.checkCollision(
-          playerX - playerWidth/2, playerY - playerHeight/2, playerWidth, playerHeight,
-          spike.x, spike.y, spike.width, spike.height
-        )) {
-          console.log("Player stepped on spikes!");
-          this.playerTrapped = true;
-          this.trapTimer = 180; // Trap player for 3 seconds (60fps * 3)
-          this.activeSpikeIndex = i; // Remember which spike was triggered
-          
-          // Show trap message
-          if (!this.startText) {
-            this.startText = new PIXI.Text({
-              text: "You stepped on spikes! Can't move for 3 seconds",
-              style: {
-                fontFamily: "Arial",
-                fontSize: 24,
-                fill: 0xff0000,
-                align: "center"
-              }
-            });
-            this.startText.anchor.set(0.5);
-            this.startText.position.set(
-              window.innerWidth / 2,
-              window.innerHeight / 2 - 100
-            );
-            this.container.addChild(this.startText);
-          }
-          
-          break;
-        }
-      }
-    }
-    
-    // Update trap timer if player is trapped
-    if (this.playerTrapped) {
-      this.trapTimer--;
-      
-      // Force player to stop moving when trapped
-      Matter.Body.setVelocity(this.player.body, {
-        x: 0,
-        y: this.player.velocity.y
-      });
-      
-      // Reset trapped state after timer expires and remove the spike
-      if (this.trapTimer <= 0) {
-        this.playerTrapped = false;
-        
-        // Remove trap message
-        if (this.startText) {
-          this.container.removeChild(this.startText);
-          this.startText = null;
-        }
-        
-        // Remove the spike that trapped the player
-        if (this.activeSpikeIndex >= 0 && this.activeSpikeIndex < this.spikeLocations.length) {
-          // Remove the graphics object from the container
-          if (this.spikesGraphicsObjects[this.activeSpikeIndex]) {
-            this.container.removeChild(this.spikesGraphicsObjects[this.activeSpikeIndex]);
-          }
-          
-          // Remove from the arrays
-          this.spikeLocations.splice(this.activeSpikeIndex, 1);
-          this.spikesGraphicsObjects.splice(this.activeSpikeIndex, 1);
-          
-          this.activeSpikeIndex = -1; // Reset the active spike index
-        }
-      }
-    }
 
-    // Check if adversary has completed its path during the pathfinding stage
-    if (this.gameStage === 4 && this.adversary.reachedEnd && !this.startText) {
-      // Show message to press any key to start
-      this.startText = new PIXI.Text({
-        text: "AI has shown the way! Press any key to start playing",
-        style: {
-          fontFamily: "Arial",
-          fontSize: 24,
-          fill: 0xffffff,
-          align: "center"
-        }
-      });
-      this.startText.anchor.set(0.5);
-      this.startText.position.set(
-        window.innerWidth / 2,
-        window.innerHeight / 2 - 100
-      );
-      this.container.addChild(this.startText);
-
-      // Remove the text after 3 seconds
-      setTimeout(() => {
-        if (this.startText && this.container.children.includes(this.startText)) {
-          this.container.removeChild(this.startText);
-          this.startText = null;
-        }
-      }, 3000);
-    }
   }
 
   resetGame() {
@@ -437,32 +406,6 @@ export class GameScene extends Scene {
     this.playerItem = null;
     this.aiItem = null;
     this.disablePlayerMovement();
-    
-    // Reset spike trap state
-    this.spikeLocations = [];
-    this.playerTrapped = false;
-    this.trapTimer = 0;
-    this.activeSpikeIndex = -1;
-    
-    // Clean up all spike graphics
-    for (const spikesGraphics of this.spikesGraphicsObjects) {
-      if (spikesGraphics && this.container.children.includes(spikesGraphics)) {
-        this.container.removeChild(spikesGraphics);
-      }
-    }
-    this.spikesGraphicsObjects = [];
-
-    // Remove any existing messages
-    if (this.startText) {
-      this.container.removeChild(this.startText);
-      this.startText = null;
-    }
-
-    // Clean up any item placement UI
-    if (this.itemPlacementPreview) {
-      this.container.removeChild(this.itemPlacementPreview);
-      this.itemPlacementPreview = null;
-    }
     
     // Reset adversary
     if (this.adversary) {
@@ -476,181 +419,56 @@ export class GameScene extends Scene {
     ));
     
     // Start item selection again
-    this.createItemSelectionUI();
+    this.createItemButtons();
   }
 
-  /**
-   * Create the UI for item selection
-   */
-  createItemSelectionUI() {
-    // Reset the buttons array
-    this.itemButtons = [];
-    
-    // Create container for UI elements
+  createItemButtons() {
+    // change this list to add more items to the selection
+    // TODO: create logic to randomize this
+    this.availableItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes];
     this.itemSelectionUI = new PIXI.Container();
-    this.container.addChild(this.itemSelectionUI);
-    this.itemSelectionUI.zIndex = 1000;
-    
-    // Create title text
-    const titleText = new PIXI.Text({
-      text: "Select an item:",
-      style: {
-        fontFamily: "Arial",
-        fontSize: 24,
-        fill: 0xffffff,
-        align: "center"
-      }
-    });
-    titleText.anchor.set(0.5, 0);
-    titleText.position.set(window.innerWidth / 2, 50);
-    this.itemSelectionUI.addChild(titleText);
-    
-    // Create description text
-    const descriptionText = new PIXI.Text({
-      text: "You'll place this item before the game starts",
-      style: {
-        fontFamily: "Arial",
-        fontSize: 16,
-        fill: 0xcccccc,
-        align: "center"
-      }
-    });
-    descriptionText.anchor.set(0.5, 0);
-    descriptionText.position.set(window.innerWidth / 2, 80);
-    this.itemSelectionUI.addChild(descriptionText);
-    
-    // Make sure availableItems is defined
-    if (!this.availableItems) {
-      this.availableItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes];
-    }
-    
-    // Create buttons for each item
-    const itemNames = ["Platform", "Bomb", "Spikes"];
-    const itemDescriptions = [
-      "Add a 3-tile platform to help you reach the flag",
-      "Remove a 3-tile platform (cannot remove flag platform)",
-      "Place spikes on a platform to trap your opponent"
-    ];
-    
+
+    // Create the buttons
     for (let i = 0; i < this.availableItems.length; i++) {
-      const button = new PIXI.Container();
-      button.x = window.innerWidth / 2 - 250 + i * 250;
-      button.y = 150;
-      
-      // Button background
-      const bg = new PIXI.Graphics();
-      bg.beginFill(0x333333);
-      bg.lineStyle(2, 0x666666);
-      bg.drawRoundedRect(0, 0, 200, 150, 10);
-      bg.endFill();
-      button.addChild(bg);
-      
-      // Item name
-      const itemText = new PIXI.Text({
-        text: itemNames[i],
-        style: {
-          fontFamily: "Arial",
-          fontSize: 20,
-          fill: 0xffffff,
-          align: "center"
+      const button = new ItemButton(this.availableItems[i], i);
+      button.bg.on('pointerdown', () => {
+        // only allow this to be hit when the game stage = 0
+        if (this.gameStage === 0) {
+          console.log('Item selected:', this.availableItems[i]);
+          this.playerItem = this.availableItems[i];
+
+          // remove this item from the array of items
+          this.availableItems.splice(i, 1);
+
+          // init phase 1
+          this.gameStage = 1;
         }
+        // else do nothing
       });
-      itemText.anchor.set(0.5, 0);
-      itemText.position.set(100, 20);
-      button.addChild(itemText);
-      
-      // Item icon (placeholder graphics)
-      const icon = new PIXI.Graphics();
-      switch (this.availableItems[i]) {
-        case ItemType.Platform:
-          icon.beginFill(0x995533);
-          icon.drawRect(50, 50, 100, 20);
-          icon.endFill();
-          break;
-        case ItemType.Bomb:
-          icon.beginFill(0x333333);
-          icon.lineStyle(2, 0xff0000);
-          icon.drawCircle(100, 60, 25);
-          icon.endFill();
-          break;
-        case ItemType.Spikes:
-          icon.beginFill(0xaaaaaa);
-          for (let j = 0; j < 5; j++) {
-            icon.moveTo(40 + j * 20, 70);
-            icon.lineTo(50 + j * 20, 40);
-            icon.lineTo(60 + j * 20, 70);
-          }
-          icon.endFill();
-          break;
-      }
-      button.addChild(icon);
-      
-      // Item description
-      const descText = new PIXI.Text({
-        text: itemDescriptions[i],
-        style: {
-          fontFamily: "Arial",
-          fontSize: 12,
-          fill: 0xcccccc,
-          align: "center",
-          wordWrap: true,
-          wordWrapWidth: 180
-        }
-      });
-      descText.anchor.set(0.5, 0);
-      descText.position.set(100, 100);
-      button.addChild(descText);
-      
-      // Make interactive
-      bg.eventMode = 'static';
-      bg.cursor = 'pointer';
-      bg.on('pointerdown', () => {
-        this.selectPlayerItem(this.availableItems[i]);
-      });
-      
-      this.itemSelectionUI.addChild(button);
-      this.itemButtons.push(button);
-    }
+      this.itemSelectionUI.addChild(button.button);
   }
-  
-  /**
-   * Handle player item selection
-   */
-  selectPlayerItem(item: ItemType) {
-    this.playerItem = item;
-    
-    // Update UI to show selection
-    if (this.itemSelectionUI) {
-      this.container.removeChild(this.itemSelectionUI);
-      this.itemSelectionUI = null;
-    }
-    
-    // Now let the AI choose an item using the behavior tree
-    this.gameStage = 1;
-    this.selectAIItem();
-  }
+
+  this.container.addChild(this.itemSelectionUI);
+}
   
   /**
    * AI selects an item using the behavior tree
    */
   selectAIItem() {
-    if (!this.playerItem) {
-      console.error("Player must select an item before AI");
-      return;
-    }
-    
+    this.gameStage = 0;
     // Get player position
-    const playerPosition = new PIXI.Point(
-      this.player.body.position.x / App.config.tileSize,
-      this.player.body.position.y / App.config.tileSize
-    );
+    // const playerPosition = new PIXI.Point(
+    //   this.player.body.position.x / App.config.tileSize,
+    //   this.player.body.position.y / App.config.tileSize
+    // );
     
-    // Use adversary's behavior tree to select an item
-    this.aiItem = this.adversary.selectItem(this.playerItem, playerPosition);
-    
+    // TODO: change this to use the behavior tree
+    // this.aiItem = this.adversary.selectItem(this.availableItems, this.playerItem, playerPosition);
+    this.aiItem = this.availableItems[0]
+
     // Create info text about AI's selection
     const aiSelectionText = new PIXI.Text({
-      text: `AI selected: ${this.aiItem}`,
+      text: `AI selected: ${this.aiItem}, waiting 3 seconds...`,
       style: {
         fontFamily: "Arial",
         fontSize: 24,
@@ -659,22 +477,21 @@ export class GameScene extends Scene {
       }
     });
     aiSelectionText.anchor.set(0.5);
-    aiSelectionText.position.set(window.innerWidth / 2, window.innerHeight / 2 - 100);
+    aiSelectionText.position.set((window.innerWidth / 2) + 1000, window.innerHeight / 2 - 100);
     this.container.addChild(aiSelectionText);
     
-    // Display for 2 seconds then move to item placement phase
+    // Display for 3 seconds then move to item placement phase
     setTimeout(() => {
       this.container.removeChild(aiSelectionText);
       this.gameStage = 2;
-      this.startItemPlacement();
-    }, 2000);
+    }, 3000);
   }
   
   /**
    * Start the item placement phase for the player
    */
   startItemPlacement() {
-    if (!this.playerItem) return;
+    this.gameStage = 0;
     
     // Show instructions
     const placementText = new PIXI.Text({
@@ -687,7 +504,7 @@ export class GameScene extends Scene {
       }
     });
     placementText.anchor.set(0.5);
-    placementText.position.set(window.innerWidth / 2, 50);
+    placementText.position.set((window.innerWidth / 2) + 1000, 50);
     this.container.addChild(placementText);
     
     // Create preview graphics
@@ -728,7 +545,6 @@ export class GameScene extends Scene {
     
     // Update preview based on selected item
     this.itemPlacementPreview.clear();
-    
     switch (this.playerItem) {
       case ItemType.Platform:
         this.itemPlacementPreview.beginFill(0x995533, 0.7);
@@ -807,27 +623,13 @@ export class GameScene extends Scene {
     switch (this.playerItem) {
       case ItemType.Platform:
         console.log("Creating platform at", gridX, gridY);
-        try {
-          // Add a new platform (3 tiles wide)
-          const platformRect = new PIXI.Rectangle(
-            gridX, 
-            gridY, 
-            3, // width in tiles
-            1  // height in tiles
-          );
-          console.log("Platform rectangle:", platformRect);
-          
-          const newPlatform = new Platform(platformRect);
-          this.container.addChild(newPlatform.container);
-          newPlatform.container.zIndex = 50;
-          this.platforms.push(newPlatform);
-          
-          // Note: We don't need to add the physics body manually because
-          // the Platform constructor already adds it to the physics world
-          console.log("Platform created successfully");
-        } catch (error) {
-          console.error("Error creating platform:", error);
-        }
+        // TODO: make these be passed into from the ItemType
+        // Maybe make ItemType a class and not a Enum to hold more info.
+        const rectW = 3
+        const rectH = 1
+        const rect = new PIXI.Rectangle(gridX, gridY, rectW, rectH);
+        const platform = new Platform(rect)
+        this.addPlatform(platform)
         break;
         
       case ItemType.Bomb:
@@ -842,7 +644,6 @@ export class GameScene extends Scene {
             
             if (platformY !== flagPlatformY || Math.abs(platformX - flagPlatformX) > 1) {
               // Not a flag platform, remove it
-              Matter.World.remove(App.physics.world, platform.body);
               this.container.removeChild(platform.container);
               this.platforms = this.platforms.filter(p => p !== platform);
             }
@@ -852,31 +653,8 @@ export class GameScene extends Scene {
         
       case ItemType.Spikes:
         console.log("Creating spikes at", gridX, gridY);
-        // Add spikes to a platform
-        const spikesGraphics = new PIXI.Graphics();
-        spikesGraphics.beginFill(0xaaaaaa);
-        for (let i = 0; i < 3; i++) {
-          spikesGraphics.moveTo(gridX * App.config.tileSize + i * (App.config.tileSize/3), 
-                               gridY * App.config.tileSize + App.config.tileSize);
-          spikesGraphics.lineTo(gridX * App.config.tileSize + (i + 0.5) * (App.config.tileSize/3), 
-                               gridY * App.config.tileSize);
-          spikesGraphics.lineTo(gridX * App.config.tileSize + (i + 1) * (App.config.tileSize/3), 
-                               gridY * App.config.tileSize + App.config.tileSize);
-        }
-        spikesGraphics.endFill();
-        this.container.addChild(spikesGraphics);
-        spikesGraphics.zIndex = 60;
-        
-        // Store the spike location for collision detection
-        this.spikeLocations.push({
-          x: gridX * App.config.tileSize,
-          y: gridY * App.config.tileSize,
-          width: App.config.tileSize,
-          height: App.config.tileSize
-        });
-        
-        // Store the graphics object
-        this.spikesGraphicsObjects.push(spikesGraphics);
+        const spike = new Spike(new PIXI.Point(gridX, gridY));
+        this.addSpike(spike);
         break;
     }
     
@@ -905,10 +683,9 @@ export class GameScene extends Scene {
     
     this.itemPlacementActive = false;
     this.selectedPlatforms = [];
-    
-    // Move to AI placement phase
-    this.gameStage = 3;
+
     this.placeAIItem();
+    
   }
   
   /**
@@ -932,7 +709,10 @@ export class GameScene extends Scene {
     this.container.addChild(aiActionText);
     
     // Determine where AI should place its item
-    const placementPosition = this.adversary.determineItemPlacement();
+
+    // TODO: revamp determineItemPlacement
+    // const placementPosition = this.adversary.determineItemPlacement();
+    const placementPosition = new PIXI.Point(500, 500)
     const gridX = Math.floor(placementPosition.x);
     const gridY = Math.floor(placementPosition.y);
     
@@ -940,29 +720,14 @@ export class GameScene extends Scene {
     setTimeout(() => {
       switch (this.aiItem) {
         case ItemType.Platform:
-          try {
-            // Add a new platform (3 tiles wide)
-            const platformRect = new PIXI.Rectangle(
-              gridX, 
-              gridY, 
-              3, // width in tiles
-              1  // height in tiles
-            );
-            console.log("AI Platform rectangle:", platformRect);
-            
-            const newPlatform = new Platform(platformRect);
-            this.container.addChild(newPlatform.container);
-            newPlatform.container.zIndex = 50;
-            this.platforms.push(newPlatform);
-            
-            // Note: We don't need to add the physics body manually because
-            // the Platform constructor already adds it to the physics world
-            console.log("AI Platform created successfully");
-          } catch (error) {
-            console.error("Error creating AI platform:", error);
-          }
+          console.log("AI creating platform at", gridX, gridY);
+          // TODO same as the player Platform, have this Platform type take in a W and a H
+          const rectW = 3
+          const rectH = 1
+          const rect = new PIXI.Rectangle(gridX, gridY, rectW, rectH);
+          const platform = new Platform(rect)
+          this.addPlatform(platform)
           break;
-          
         case ItemType.Bomb:
           // Find closest platform to the target position
           let closestPlatform = null;
@@ -992,199 +757,23 @@ export class GameScene extends Scene {
           
           // Remove the closest platform
           if (closestPlatform) {
-            Matter.World.remove(App.physics.world, closestPlatform.body);
-            this.container.removeChild(closestPlatform.container);
             this.platforms = this.platforms.filter(p => p !== closestPlatform);
           }
           break;
           
         case ItemType.Spikes:
-          // Add spikes to a platform
-          const spikesGraphics = new PIXI.Graphics();
-          spikesGraphics.beginFill(0xaaaaaa);
-          for (let i = 0; i < 3; i++) {
-            spikesGraphics.moveTo(gridX * App.config.tileSize + i * (App.config.tileSize/3), 
-                                 gridY * App.config.tileSize + App.config.tileSize);
-            spikesGraphics.lineTo(gridX * App.config.tileSize + (i + 0.5) * (App.config.tileSize/3), 
-                                 gridY * App.config.tileSize);
-            spikesGraphics.lineTo(gridX * App.config.tileSize + (i + 1) * (App.config.tileSize/3), 
-                                 gridY * App.config.tileSize + App.config.tileSize);
-          }
-          spikesGraphics.endFill();
-          this.container.addChild(spikesGraphics);
-          spikesGraphics.zIndex = 60;
-          
-          // Store the spike location for collision detection
-          this.spikeLocations.push({
-            x: gridX * App.config.tileSize,
-            y: gridY * App.config.tileSize,
-            width: App.config.tileSize,
-            height: App.config.tileSize
-          });
-          
-          // Store the graphics object
-          this.spikesGraphicsObjects.push(spikesGraphics);
+          console.log("AI creating spikes at", gridX, gridY);
+          const spike = new Spike(new PIXI.Point(gridX, gridY));
+          this.addSpike(spike)
           break;
       }
       
       // Clean up and move to pathfinding phase
       this.container.removeChild(aiActionText);
-      this.gameStage = 4;
-      
-      // Update the adversary's path based on the new level layout
-      this.updateAdversaryPath();
-      
-      // Show message about AI pathfinding
-      const pathfindText = new PIXI.Text({
-        text: "AI is searching for a path to the flag...",
-        style: {
-          fontFamily: "Arial",
-          fontSize: 24,
-          fill: 0xffffff,
-          align: "center"
-        }
-      });
-      pathfindText.anchor.set(0.5);
-      pathfindText.position.set(window.innerWidth / 2, 50);
-      this.container.addChild(pathfindText);
-      
-      // Remove after 3 seconds
-      setTimeout(() => {
-        this.container.removeChild(pathfindText);
-      }, 3000);
+      this.gameStage = 3;
+      console.log('moving game to stage 3, All placing should be complete and the game will start')
     }, 1500);
   }
   
-  /**
-   * Update the adversary's path after items are placed
-   */
-  updateAdversaryPath() {
-    // Regenerate the level representation based on current platforms
-    // This is a simplified approach - a more complete implementation would
-    // update the level string representation based on all modifications
-    
-    // Recalculate the path
-    const flagPosition = new PIXI.Point(
-      this.flag.body.position.x / App.config.tileSize,
-      this.flag.body.position.y / App.config.tileSize
-    );
-    
-    const advStart = new PIXI.Point(
-      this.adversary.body.position.x / App.config.tileSize,
-      this.adversary.body.position.y / App.config.tileSize
-    );
-    
-    this.adversary.calculatePath(advStart, flagPosition);
-  }
-
-  /**
-   * Simple AABB collision detection
-   */
-  checkCollision(x1: number, y1: number, w1: number, h1: number, x2: number, y2: number, w2: number, h2: number): boolean {
-    return x1 < x2 + w2 &&
-           x1 + w1 > x2 &&
-           y1 < y2 + h2 &&
-           y1 + h1 > y2;
-  }
 }
-
-export const level = [
-  "P                                                          P",
-  "P                                                          P",
-  "P                                                          P",
-  "P                                                          P",
-  "P             F                     PPPPPP       SS        P",
-  "P           PPPPPPP                            PPPPPPP     P",
-  "P   PPPP                 PPPPPPP                           P",
-  "P            SSS                                        PPPP",
-  "PPPP    PPPPPPPP                                           P",
-  "P                                                PPPP      P",
-  "P   PPPP                         PPPPPPP                   P",
-  "P                                                          P",
-  "P                   SSS                                 PPPP",
-  "P      PPPPPP       PPPPPPPPP                PPPPP         P",
-  "P                                PPPPPP                 PPPP",
-  "P                                                          P",
-  "P                                       P                  P",
-  "PPPP        PPPPPPPP                     P                 P",
-  "P                         PPPPPP          P             PPPP",
-  "P                                                          P",
-  "PPPP                                  P PPP      PPPP      P", 
-  "P                                                          P",
-  "P             PPPPPPPPP                                    P",
-  "PPPP                                                PPPPPPPP",
-  "P      PPPP             SSS         PPPPPP                 P",
-  "P                                                          P",
-  "P                                                          P",
-  "P                                                          P",
-  "P         PP                 P                PPPPPPPP     P",
-  "P        PPPP               PP                             P",
-  "P     PPPPPPPPPPP            P                             P",
-  "P                            P                             P",
-  "P                     X      P                             P",
-  "P               PPPPPPPPPPPPPPP     PPPPPPPPPPPPPPPPP      P",
-  "P        SSS                  PP                           P",
-  "P    PPPPPPPP                 PPP                          P",
-  "P                             PPPP                         P",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-  "PPPPPPPPPPPPPPPPPP      PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-];
-
-export const oldTestLevel = [
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "                                                                                                                         ",
-  "F                                                                                                                        ",
-  "PPPPP    PP                                                                                                              ",
-  "          P                 P                                                                                            ",
-  "           P                PP                                                                                           ",
-  "PPPPP        P          P   P  P                                                                                         ",
-  "               X                                                                                                         ",
-  "PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP",
-]
-
-export const rlevel = [
-  "                                   ",
-  "                                   ",
-  "                                   ",
-  "                                   ",
-  "                                   ",
-  "                                   ",
-  "                                   ",
-  "                                   ",
-  "                                   ",
-  "                                   ",
-  "                          F        ",
-  "                        PPP        ",
-  "                 P                 ",
-  "PPPPP                              ",
-  "                   P               ",
-  "              P                    ",
-  " X   P                             ",
-  "PP   P   P  P                      ",
-];
 

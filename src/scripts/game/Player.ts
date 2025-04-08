@@ -2,8 +2,8 @@ import * as PIXI from "pixi.js";
 import { App } from "../system/App";
 import Matter from "matter-js";
 import { getLevelNodes, getNodeKey, estimateArc, clearLine } from "../ai/preprocess";
-import { level } from "./GameScene";
-
+import { level, oldTestLevel, rlevel } from './levels';
+ 
 export class Player {
   container: PIXI.Container;
   sprite!: PIXI.Sprite;
@@ -147,6 +147,7 @@ export class Player {
   }
 
   update() {
+    // console.log(this.contacts, this.canJump)
     this.sprite.position = this.body.position;
     this.sprite.rotation = this.body.angle;
 
