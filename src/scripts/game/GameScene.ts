@@ -70,8 +70,8 @@ export class GameScene extends Scene {
     this.physicsEvents();
     this.keyEvents();
 
-    this.enablePlayerMovement()
-    this.createAdversary(this.playerSpawn, this.flagPoint);
+    // this.enablePlayerMovement()
+    // this.createAdversary(this.playerSpawn, this.flagPoint);
 
     // this.gameStage = 3;
 
@@ -79,9 +79,6 @@ export class GameScene extends Scene {
     // this.spawn(this.playerSpawn);
     // this.disablePlayerMovement();
 
-    const group = Matter.Body.nextGroup(true);
-    this.adversary.body.collisionFilter.group = group;
-    this.player.body.collisionFilter.group = group;
     
   }
 
@@ -212,11 +209,11 @@ export class GameScene extends Scene {
             this.resetGame();
           }
 
-          if (player && platform) {
-            console.log(player.position.x, player.position.y, pair, platform.position.x, platform.position.y);
-          }
+          // if (player && platform) {
+          //   console.log(player.position.x, player.position.y, pair, platform.position.x, platform.position.y);
+          // }
           
-          if (player && platform && pair.collision.normal.y <= 0) {
+          if (player && platform && (pair.collision.normal.y === 0 || player.position.y < platform.position.y)) {
             console.log('player landing')
             this.player.land(pair.collision.normal);
             App.controllerInput.drop = false;
@@ -333,36 +330,39 @@ export class GameScene extends Scene {
     // console.log(this.itemSelectionUI)
 
     // this is the starting game stage, player has not chosen an item yet
-    // if (this.gameStage === 0) {
-    //   return;
-    // }
+    if (this.gameStage === 0) {
+      return;
+    }
 
-    // // move gameStage forward to AI picking
-    // if (this.gameStage === 1) {
-    //   this.container.removeChild(this.itemSelectionUI!);
-    //   // selectAIItem will increase gameStage once the AI picks the item
-    //   this.selectAIItem();
-    //   return;
-    // }
+    // move gameStage forward to AI picking
+    if (this.gameStage === 1) {
+      this.container.removeChild(this.itemSelectionUI!);
+      // selectAIItem will increase gameStage once the AI picks the item
+      this.selectAIItem();
+      return;
+    }
 
-    // if (this.gameStage === 2) {
-    //   // Move to AI placement phase
-    //   this.startItemPlacement();
-    //   return;
-    // }
+    if (this.gameStage === 2) {
+      // Move to AI placement phase
+      this.startItemPlacement();
+      return;
+    }
 
-    // if (this.gameStage === 3) {
-    //   console.log('GAME STAGE is 3')
-    //   this.enablePlayerMovement()
-    //   // this.physicsEvents();
-    //   // this.keyEvents();
-    //   this.createAdversary(this.playerSpawn, this.flagPoint);
-    //   // const group = Matter.Body.nextGroup(true);
-    //   // this.adversary.body.collisionFilter.group = group;
-    //   // this.player.body.collisionFilter.group = group;
+    if (this.gameStage === 3) {
+      console.log('GAME STAGE is 3')
+      this.enablePlayerMovement()
+      // this.physicsEvents();
+      // this.keyEvents();
+      this.createAdversary(this.playerSpawn, this.flagPoint);
+      const group = Matter.Body.nextGroup(true);
+      this.adversary.body.collisionFilter.group = group;
+      this.player.body.collisionFilter.group = group;
+      // const group = Matter.Body.nextGroup(true);
+      // this.adversary.body.collisionFilter.group = group;
+      // this.player.body.collisionFilter.group = group;
   
-    //   return;
-    // }
+      return;
+    }
 
     if (this.player.body.position.y > this.camera.shift.height) {
       console.log("Player fell off the map", this.playerSpawn.x, this.playerSpawn.y,
