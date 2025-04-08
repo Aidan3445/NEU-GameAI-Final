@@ -405,9 +405,16 @@ export class GameScene extends Scene {
 
   createItemButtons() {
     // change this list to add more items to the selection
-    // TODO: create logic to randomize this
-    this.availableItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes];
+    const allItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes];
+    this.availableItems = [];
+    this.availableItems = [];
+    for (let i = 0; i < 3; i++) {
+      const randomIndex = Math.floor(Math.random() * allItems.length);
+      this.availableItems.push(allItems[randomIndex]);
+    }
     this.itemSelectionUI = new PIXI.Container();
+
+
 
     // Create the buttons
     for (let i = 0; i < this.availableItems.length; i++) {
