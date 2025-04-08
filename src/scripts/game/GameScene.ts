@@ -164,7 +164,9 @@ export class GameScene extends Scene {
             this.resetGame();
           }
 
-          if (player && platform && pair.collision.normal.y <= 0) {
+          if (player && platform &&
+            (pair.collision.normal.y === 0 || player.position.y <= platform.position.y)
+          ) {
             this.player.land(pair.collision.normal);
             App.controllerInput.drop = false;
           }
@@ -175,7 +177,7 @@ export class GameScene extends Scene {
             this.adversary.reachedEnd = true;
           }
 
-          if (adversary && platform) {
+          if (adversary && platform && adversary.position.y <= platform.position.y) {
             console.log("Adversary landed on platform");
             this.adversary.land();
           }
