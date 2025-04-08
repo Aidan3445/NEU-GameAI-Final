@@ -39,7 +39,7 @@ export class GameScene extends Scene {
     this.createFlag(flagPoint);
     this.createPlatforms(platforms);
     this.adversarySpawn = AIStart;
-    this.createAdversary(AIStart, flagPoint);
+    this.createAdversary(AIStart);
 
     this.physicsEvents();
     this.keyEvents();
@@ -47,10 +47,6 @@ export class GameScene extends Scene {
     // Initially place the player but don't allow movement yet
     this.spawn(this.playerSpawn);
     this.disablePlayerMovement();
-
-    const group = Matter.Body.nextGroup(true);
-    this.adversary.body.collisionFilter.group = group;
-    this.player.body.collisionFilter.group = group;
   }
 
   createCamera(levelRect: PIXI.Rectangle) {
@@ -82,10 +78,10 @@ export class GameScene extends Scene {
     });
   }
 
-  createAdversary(start: PIXI.Point, target: PIXI.Point) {
+  createAdversary(start: PIXI.Point) {
     // adversary starts one tile left
     const advStart = new PIXI.Point(start.x, start.y);
-    this.adversary = new Adversary(advStart, target, this.camera.bg.container, this.levelPlan);
+    this.adversary = new Adversary(advStart, this.camera.bg.container);
     this.container.addChild(this.adversary.container);
     this.adversary.container.zIndex = 90;
   }
@@ -119,6 +115,10 @@ export class GameScene extends Scene {
   }
 
   physicsEvents() {
+    const group = Matter.Body.nextGroup(true);
+    this.adversary.body.collisionFilter.group = group;
+    this.player.body.collisionFilter.group = group;
+
     Matter.Events.on(App.physics, 'beforeUpdate',
       () => {
         // Only allow player movement if the game has started
@@ -168,7 +168,7 @@ export class GameScene extends Scene {
 
           //  I removed: && pair.collision.normal.y <= 0. Why is this here?
           if (adversary && platform) {
-            this.adversary.land(pair.collision.normal);
+            this.adversary.land();
             App.controllerInput.drop = false;
           }
 
@@ -185,12 +185,6 @@ export class GameScene extends Scene {
             // add delay for more forgiving platforming
             setTimeout(() => this.player.leftPlatform(pair.collision.normal), 100);
           }
-
-          const adversary = colliders.find(body => body.id === this.adversary?.body.id);
-          if (adversary && platform) {
-            setTimeout(() => this.adversary.leftPlatform(pair.collision.normal), 100);
-          }
-
         });
       });
   }
@@ -222,6 +216,9 @@ export class GameScene extends Scene {
           case "s":
             App.controllerInput.drop = true;
             break;
+          case "Enter":
+            const { AIStart, flagPoint } = buildLevel(level);
+            this.adversary.followPath(AIStart, flagPoint, level);
         }
       }
     });
@@ -262,8 +259,6 @@ export class GameScene extends Scene {
 
   update(dt: PIXI.Ticker) {
     if (this.player.body.position.y > this.camera.shift.height) {
-      console.log("Player fell off the map", this.playerSpawn.x, this.playerSpawn.y,
-        this.player.body.position.x, this.player.body.position.y);
       this.spawn(this.playerSpawn);
       this.camera.state = new PIXI.Point(0, 0);
     }
@@ -341,10 +336,7 @@ export class GameScene extends Scene {
     }
 
     // Create a new adversary
-    this.createAdversary(this.adversarySpawn, new PIXI.Point(
-      this.flag.body.position.x / App.config.tileSize,
-      this.flag.body.position.y / App.config.tileSize
-    ));
+    this.createAdversary(this.adversarySpawn);
   }
 }
 
@@ -443,8 +435,8 @@ export const level = [
   "                                   ",
   "                                   ",
   "                                   ",
-  "                                   ",
-  "    X  A     F                     ",
-  "    P  P     P                     ",
+  "                               F   ",
+  "    X  A           P   P       P   ",
+  "    P  P     PPPP          P       ",
 ];
 

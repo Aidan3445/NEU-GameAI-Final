@@ -1,9 +1,8 @@
-import * as PIXI from 'pixi.js';
-import Matter from 'matter-js';
-import { App } from '../system/App';
-import { Node } from './node';
-import { getLevelNodes, getNodeKey } from './preprocess';
-import { level } from '../game/GameScene';
+import * as PIXI from "pixi.js";
+import Matter from "matter-js";
+import { App } from "../system/App";
+import { Node } from "./node";
+import { estimateArc, getLevelNodes, getNodeKey } from "./preprocess";
 
 export class Adversary {
   container: PIXI.Container;
@@ -13,32 +12,26 @@ export class Adversary {
   path: Node[] = [];
   currentPathIndex: number = 0;
   pathGraphics: PIXI.Graphics;
-  canMove: boolean = true;
   moveTimer: number = 0;
   moveDelay: number = 30; // frames between moves
   reachedEnd: boolean = false;
   backgroundContainer: PIXI.Container;
 
-  currentlyMoving: boolean = false;
   currentTarget: PIXI.Point = new PIXI.Point(0, 0);
 
   started: boolean = false;
 
-  moving: boolean = false;
   canJump: boolean = false;
-  jumpCooldown: boolean = false;
-  contacts: Matter.Vector[] = [];
 
   distanceAway: number = 0;
-  waiting: boolean = false;
-
-  levelPlan: string[] = [];
 
   ticker = new PIXI.Ticker();
 
-  constructor(start: PIXI.Point, target: PIXI.Point, backgroundContainer: PIXI.Container, levelPlan: string[]) {
+  constructor(
+    start: PIXI.Point,
+    backgroundContainer: PIXI.Container,
+  ) {
     this.container = new PIXI.Container();
-    this.levelPlan = levelPlan;
 
     this.createSprite();
     this.createBody();
@@ -47,14 +40,11 @@ export class Adversary {
     this.pathGraphics = new PIXI.Graphics();
     backgroundContainer.addChild(this.pathGraphics);
 
-    this.calculatePath(start, target);
 
     Matter.Body.setPosition(this.body, {
       x: start.x * App.config.tileSize + App.config.tileSize / 2,
-      y: start.y * App.config.tileSize + App.config.tileSize / 2
+      y: start.y * App.config.tileSize + App.config.tileSize / 2,
     });
-
-
   }
 
   createSprite() {
@@ -78,13 +68,14 @@ export class Adversary {
         inertia: Infinity,
         friction: 0.05,
         frictionAir: 0,
-      });
+      }
+    );
 
     Matter.World.add(App.physics.world, this.body);
   }
 
-  calculatePath(start: PIXI.Point, target: PIXI.Point) {
-    const nodes = getLevelNodes(level);
+  calculatePath(start: PIXI.Point, target: PIXI.Point, levelState: string[]) {
+    const nodes = getLevelNodes(levelState);
 
     // Find the closest node to the start and target positions
     const startKey = getNodeKey(start.x, start.y);
@@ -94,7 +85,7 @@ export class Adversary {
     const targetNode = nodes.get(targetKey);
 
     if (!startNode || !targetNode) {
-      console.error('Could not find start or target node');
+      console.error("Could not find start or target node");
       this.noPathFound();
       return;
     }
@@ -103,7 +94,7 @@ export class Adversary {
     this.path = this.aStar(nodes, startNode, targetNode);
 
     if (this.path.length === 0) {
-      console.error('No path found from', startKey, 'to', targetKey);
+      console.error("No path found from", startKey, "to", targetKey);
       this.noPathFound();
       return;
     }
@@ -111,11 +102,6 @@ export class Adversary {
     // Visualize the path
     this.visualizePath();
 
-    // set the current target to the first node in the path
-    this.currentTarget = new PIXI.Point(
-      this.path[0].point.x * App.config.tileSize + App.config.tileSize / 2,
-      this.path[0].point.y * App.config.tileSize + App.config.tileSize / 2
-    );
   }
 
   aStar(nodes: Map<string, Node>, start: Node, goal: Node): Node[] {
@@ -145,7 +131,10 @@ export class Adversary {
       // Find node with lowest fScore in openSet
       let currentIndex = 0;
       for (let i = 1; i < openSet.length; i++) {
-        if (fScore.get(getKey(openSet[i]))! < fScore.get(getKey(openSet[currentIndex]))!) {
+        if (
+          fScore.get(getKey(openSet[i]))! <
+          fScore.get(getKey(openSet[currentIndex]))!
+        ) {
           currentIndex = i;
         }
       }
@@ -171,7 +160,10 @@ export class Adversary {
         if (tentativeGScore < gScore.get(getKey(neighbor))!) {
           neighbor.parent = current;
           gScore.set(getKey(neighbor), tentativeGScore);
-          fScore.set(getKey(neighbor), tentativeGScore + this.heuristic(neighbor, goal));
+          fScore.set(
+            getKey(neighbor),
+            tentativeGScore + this.heuristic(neighbor, goal)
+          );
 
           if (!openSet.includes(neighbor)) {
             openSet.push(neighbor);
@@ -180,7 +172,7 @@ export class Adversary {
       }
     }
 
-    console.error('No path found');
+    console.error("No path found");
     return [];
   }
 
@@ -207,7 +199,9 @@ export class Adversary {
     if (this.path.length < 2) return;
 
     // Draw dots at each node in the path
+    let prevNode;
     for (const node of this.path) {
+      // dots
       this.pathGraphics.beginFill(0xff0000);
       this.pathGraphics.drawCircle(
         node.point.x * App.config.tileSize + App.config.tileSize / 2,
@@ -215,6 +209,36 @@ export class Adversary {
         5
       );
       this.pathGraphics.endFill();
+
+
+      if (!prevNode) {
+        prevNode = node;
+        continue;
+      }
+
+      // draw estimated jump arc
+      this.pathGraphics.moveTo(node.point.x * App.config.tileSize + App.config.tileSize / 2,
+        node.point.y * App.config.tileSize + App.config.tileSize / 2);
+      let prevX = node.point.x;
+      let prevY = node.point.y;
+      for (let x = 1; x <= 10; x++) {
+        const step = node.point.x + x * (prevNode.point.x - node.point.x) / 10;
+        const y = estimateArc(
+          step,
+          prevNode.point.x,
+          prevNode.point.y,
+          node.point.x,
+          node.point.y,
+        );
+
+        this.pathGraphics.lineTo(step * App.config.tileSize + App.config.tileSize / 2,
+          y * App.config.tileSize + App.config.tileSize / 2);
+        this.pathGraphics.stroke({ color: 0xFFFF00, pixelLine: true });
+        prevX = step;
+        prevY = y;
+      }
+
+      prevNode = node;
     }
   }
 
@@ -223,158 +247,48 @@ export class Adversary {
     return this.body.velocity;
   }
 
-  move(xDir: number) {
-    Matter.Body.applyForce(this.body, this.body.position, {
-      x: xDir * App.config.playerSpeed,
-      y: 0
-    });
+  followPath(start: PIXI.Point, target: PIXI.Point, levelState: string[]) {
+    this.calculatePath(start, target, levelState);
 
-    this.moving = true;
-  }
-
-  moveX() {
-    const dt = this.ticker.deltaTime;
-
-    const jumpForce = App.config.playerJump;
-    const mass = this.body.mass;
-    const verticalAcceleration = jumpForce / mass;
-
-    const v0 = verticalAcceleration * dt;
-
-
-
-
-
-    /*
-    const fraction = 0.05 * this.distanceAway;
-
-    if (fraction < 0.001) {
-      // If the distance is too small, stop moving
+    if (this.path.length === 0) {
+      console.error("No path to follow");
       return;
     }
 
-    // Current position
-    const currentX = this.body.position.x;
-    const currentY = this.body.position.y;
+    // set the current target to the first node in the path
+    this.currentTarget = new PIXI.Point(
+      this.path[0].point.x * App.config.tileSize + App.config.tileSize / 2,
+      this.path[0].point.y * App.config.tileSize + App.config.tileSize / 2
+    );
 
-    // Lerp to newX 
-    const newX = currentX + fraction;
-    let clampedX = Math.min(newX, this.currentTarget.x);
-    if (fraction < 0) {
-      clampedX = Math.max(newX, this.currentTarget.x);
-    }
+  }
 
-    // Directly set the body's new position
-    Matter.Body.setPosition(this.body, {
-      x: clampedX,
-      y: currentY
-    });
-    */
+  moveX() {
   }
 
   jump() {
-    if (this.canJump && !this.jumpCooldown) {
+    if (this.canJump) {
       Matter.Body.setVelocity(this.body, {
         x: this.velocity.x,
-        y: 0
+        y: 0,
       });
-
-      const wallJump = 0;
-      /*
-        this.contacts.reduce((acc, normal) => {
-        return acc + normal.x;
-      }, 0);
-      */
-
       Matter.Body.applyForce(this.body, this.body.position, {
-        x: wallJump * App.config.playerSpeed * 0.5,
-        y: -App.config.playerJump
+        x: 0,
+        y: -App.config.playerJump,
       });
       this.canJump = false;
-      this.sprite.texture = App.res("scary");
-
-      this.jumpCooldown = true;
-      setTimeout(() => this.jumpCooldown = false, 500);
     }
   }
 
-  land(normal: Matter.Vector) {
+  land() {
     this.canJump = true;
-    this.sprite.texture = App.sprite("scary").texture;
-    this.contacts.push(normal);
     Matter.Body.setVelocity(this.body, {
       x: 0,
-      y: this.velocity.y
+      y: this.velocity.y,
     });
   }
 
-  leftPlatform(normal: Matter.Vector) {
-    const toRemoveIndex = this.contacts.findIndex((n) => n.x === normal.x && n.y === normal.y);
-    this.contacts = this.contacts.filter((_, index) => index !== toRemoveIndex);
-
-    if (this.contacts.length === 0) {
-      this.canJump = false;
-      this.sprite.texture = App.res("scary");
-    }
-  }
-
   update() {
-    // A threshold for "close enough to the target."
-    // Adjust based on tileSize, sprite size, etc.
-    const threshold = 42;
-    // 1. Calculate distance to currentTarget
-    const AIx = this.body.position.x;
-    const AIy = this.body.position.y + App.config.tileSize / 2;
-
-    const dx = this.currentTarget.x - AIx;
-    const dy = this.currentTarget.y - AIy;
-    const distance = Math.hypot(dx, dy);
-
-    console.log('Moving to next point in path', distance, threshold, this.currentPathIndex, this.path.length);
-    // If we've arrived at the currentTarget
-    if (distance < threshold && this.canJump === true) {
-      // Only trigger the delay if we aren't already waiting
-      if (!this.waiting) {
-        this.waiting = true;
-
-        // Wait one second, then proceed
-        setTimeout(() => {
-          console.log('Adversary reached the target point', this.currentTarget.x, this.currentTarget.y);
-
-          if (this.path.length > 0 && this.currentPathIndex < this.path.length && !this.reachedEnd) {
-            const targetNode = this.path[this.currentPathIndex];
-            const targetX = targetNode.point.x * App.config.tileSize + App.config.tileSize / 2;
-            const targetY = targetNode.point.y * App.config.tileSize + App.config.tileSize / 2;
-
-            // Assign currentTarget and mark that we are moving
-            this.currentTarget = new PIXI.Point(targetX, targetY);
-            this.distanceAway = this.currentTarget.x - this.body.position.x;
-
-            // Move to the next point in the path
-            this.currentPathIndex++;
-
-            // Check if we've reached the end of the path
-            if (this.currentPathIndex >= this.path.length) {
-              this.reachedEnd = true;
-              console.log('Adversary reached the flag!');
-            }
-          }
-
-          // Now the AI can proceed again
-          this.waiting = false;
-        }, 1000);
-      }
-    } else {
-      // If we haven't reached the threshold, keep moving and/or jumping
-      if (this.shouldIWalk()) {
-        this.moveX();
-      } else {
-        this.jump();
-        if (!this.canJump) {
-          this.moveX();
-        }
-      }
-    }
 
     // Keep sprite's position synced with physics body
     this.sprite.position = this.body.position;
@@ -383,30 +297,31 @@ export class Adversary {
   shouldIWalk() {
     return false;
 
+    /*
     const tileSize = App.config.tileSize;
-
+ 
     // 1) Convert physics position (pixels) to tile coordinates
     const currentTileX = Math.floor(this.body.position.x / tileSize);
     const currentTileY = Math.floor(
       (this.body.position.y + tileSize / 2) / tileSize
     );
-
+ 
     const targetTileX = Math.floor(this.currentTarget.x / tileSize);
     const targetTileY = Math.floor(this.currentTarget.y / tileSize);
-
+ 
     // 2) Must be on the same row to walk (otherwise we might need to jump)
     if (currentTileY !== targetTileY) {
       return false;
     }
-
+ 
     // 3) Figure out which direction we're walking (left or right)
     const step = targetTileX > currentTileX ? 1 : -1;
-
-    const traversableChars = [' ', 'X', 'F'];
-
+ 
+    const traversableChars = [" ", "X", "F"];
+ 
     // 4) Check each tile from currentTileX toward targetTileX
     for (let x = currentTileX; x !== targetTileX; x += step) {
-      console.log('x', x, 'currentTileY', currentTileY);
+      console.log("x", x, "currentTileY", currentTileY);
       // (a) Make sure we're inside the level bounds
       if (
         x < 0 ||
@@ -414,34 +329,34 @@ export class Adversary {
         currentTileY < 0 ||
         currentTileY >= this.levelPlan.length
       ) {
-        console.log('Out of bounds222');
+        console.log("Out of bounds222");
         return false;
       }
-
+ 
       // (b) The tile we stand in must be traversable
       // (meaning it's an open space or something that doesn't block the AI)
       const currentTileChar = this.levelPlan[currentTileY][x];
       if (!traversableChars.includes(currentTileChar)) {
-        console.log('Out of bounds2');
+        console.log("Out of bounds2");
         return false;
       }
-
+ 
       // (c) The tile *below* must be a platform (not traversable)
       // so we have something solid to stand on
       const belowY = currentTileY + 1;
       if (
         belowY >= this.levelPlan.length ||
-        this.levelPlan[belowY][x] !== 'P'
+        this.levelPlan[belowY][x] !== "P"
       ) {
-        console.log('Out of bounds3');
+        console.log("Out of bounds3");
         return false; // If "below" is out of bounds or is traversable, we can't walk here
       }
     }
-
+ 
     // If we made it through the loop, all tiles are walkable with a solid floor
     return true;
+    */
   }
-
 
   destroy() {
     Matter.Composite.remove(App.physics.world, this.body);
@@ -467,4 +382,4 @@ export class Adversary {
     this.pathGraphics.moveTo(x + size / 2, y - size / 2);
     this.pathGraphics.lineTo(x - size / 2, y + size / 2);
   }
-} 
+}

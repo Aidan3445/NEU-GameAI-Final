@@ -119,7 +119,7 @@ export function estimateArc(
   y1: number, // startY
   x2: number, // endX
   y2: number, // endY
-  J: number, // max jump height
+  J: number = App.config.J,
 ): number {
   const BNumRoot = Math.sqrt(-J * (-J - (y2 - y1)));
   const BNumerator = 2 * -J - 2 * BNumRoot;
@@ -269,7 +269,6 @@ export function clearArc(
       node.point.y,
       node2.point.x,
       node2.point.y,
-      App.config.J,
     );
 
     if (!clearLine(

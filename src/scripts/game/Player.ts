@@ -162,26 +162,40 @@ export class Player {
   }
 
   debugArc() {
+    const gridX = this.body.position.x / App.config.tileSize;
+    const gridY = this.body.position.y / App.config.tileSize;
+
     // draw parabola of jumps to the left
     this.leftParabola = new PIXI.Graphics();
     this.leftParabola.moveTo(
       this.body.position.x - App.config.M * App.config.tileSize / 2,
-      this.body.position.y + h() * App.config.tileSize);
+      this.body.position.y - App.config.J * App.config.tileSize);
     for (let x = App.config.M / 2; x <= App.config.M * 1.5; x++) {
       this.leftParabola.lineTo(this.body.position.x - x * App.config.tileSize,
-        this.body.position.y + f(x) * App.config.tileSize);
+        estimateArc(
+          gridX - x,
+          gridX,
+          gridY,
+          gridX - App.config.M,
+          gridY,
+        ) * App.config.tileSize);
     }
     this.leftParabola.stroke({ color: 0xff0000, pixelLine: true });
     this.backgroundContainer.addChild(this.leftParabola);
 
     // draw parabola of jumps to the right
     this.rightParabola = new PIXI.Graphics();
-    this.rightParabola.moveTo(
-      this.body.position.x + App.config.M * App.config.tileSize / 2,
-      this.body.position.y + h() * App.config.tileSize);
+    this.rightParabola.moveTo(this.body.position.x + App.config.M * App.config.tileSize / 2,
+      this.body.position.y - App.config.J * App.config.tileSize);
     for (let x = App.config.M / 2; x <= App.config.M * 1.5; x++) {
       this.rightParabola.lineTo(this.body.position.x + x * App.config.tileSize,
-        this.body.position.y + f(x) * App.config.tileSize);
+        estimateArc(
+          gridX + x,
+          gridX,
+          gridY,
+          gridX + App.config.M,
+          gridY,
+        ) * App.config.tileSize);
     }
     this.rightParabola.stroke({ color: 0xff0000, pixelLine: true });
     this.backgroundContainer.addChild(this.rightParabola);
@@ -190,11 +204,11 @@ export class Player {
     this.centerTop = new PIXI.Graphics();
     this.centerTop.moveTo(
       (this.body.position.x - App.config.M * App.config.tileSize / 2),
-      (this.body.position.y + h() * App.config.tileSize)
+      (this.body.position.y - App.config.J * App.config.tileSize)
     );
     this.centerTop.lineTo(
       (this.body.position.x + App.config.M * App.config.tileSize / 2),
-      (this.body.position.y + h() * App.config.tileSize)
+      (this.body.position.y - App.config.J * App.config.tileSize)
     );
 
     this.centerTop.stroke({ color: 0xff0000, pixelLine: true });
@@ -250,7 +264,6 @@ export class Player {
           node.point.y,
           neighbor.point.x,
           neighbor.point.y,
-          App.config.J,
         );
 
         arc.lineTo(step * App.config.tileSize + App.config.tileSize / 2,
@@ -270,16 +283,4 @@ export class Player {
       this.neighborRects.push(frame);
     }
   }
-}
-
-
-// explored on desmos: https://www.desmos.com/calculator/pv5ycumls5
-// debug left and right parabola arc based on config
-function f(x: number) {
-  return (x / App.config.J) * (x - App.config.M);
-}
-
-// debug center top parabola arc based on config
-function h() {
-  return -(App.config.M * App.config.M) / (4 * App.config.J);
 }
