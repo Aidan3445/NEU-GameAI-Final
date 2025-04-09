@@ -815,8 +815,8 @@ export class GameScene extends Scene {
    */
   selectItemUsingBehaviorTree(availableItems: ItemType[]): ItemType {
     const playerPosition = this.playerSpawn;
-    const aiPosition = this.adversaryStart;
     const flagPosition = this.flagPoint;
+    const adversary = this.adversary;
 
     // Create an instance of ItemSelector and use it to select an item using the behavior tree
     const itemSelector = new ItemSelector(availableItems);
@@ -824,8 +824,8 @@ export class GameScene extends Scene {
       this.playerItem!,
       this.levelPlan,
       playerPosition,
-      aiPosition,
-      flagPosition
+      flagPosition,
+      new PIXI.Point(adversary.body.position.x, adversary.body.position.y)
     );
   }
 
