@@ -2,7 +2,7 @@ import * as PIXI from 'pixi.js';
 import { Node } from './node';
 import { App } from '../system/App';
 
-const traversableChars = [' ', 'X', 'A', 'F', 'S'];
+const traversableChars = [' ', 'X', 'A', 'F'];
 // remove S when we implement spikes
 
 export function getNodeKey(x: number, y: number) {

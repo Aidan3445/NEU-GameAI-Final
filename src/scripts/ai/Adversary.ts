@@ -294,6 +294,11 @@ export class Adversary {
   }
 
   walk(xDir: number) {
+    if (this.atTarget()) {
+      this.nextTarget();
+      return;
+    }
+
     Matter.Body.applyForce(this.body, this.body.position, {
       x: xDir * App.config.playerSpeed,
       y: 0
@@ -320,6 +325,8 @@ export class Adversary {
       this.canJump = false;
 
       this.moving = true;
+
+      this.body.isSensor = true;
     }
 
     // looped call every tick we are moving
@@ -342,11 +349,16 @@ export class Adversary {
         x: (x + previousNode.x) * App.config.tileSize + App.config.tileSize / 2,
         y: this.body.position.y
       });
+
     }
   }
 
 
   land() {
+    if (!this.atTarget()) return;
+
+    this.nextTarget();
+
     setTimeout(() => {
       this.canJump = true;
     }, this.moveDelay);
@@ -355,10 +367,20 @@ export class Adversary {
 
   atTarget() {
     return this.currentTarget &&
-      Math.abs(this.currentTarget.x - this.body.position.x) < 10 &&
+      Math.abs(this.currentTarget.x - this.body.position.x) < 5 &&
       Math.abs(this.currentTarget.y - this.body.position.y) < 20;
   }
 
+  nextTarget() {
+    console.log('Reached target', this.path[this.currentPathIndex].point);
+    this.currentPathIndex++;
+    this.currentTarget = new PIXI.Point(
+      this.path[this.currentPathIndex].point.x * App.config.tileSize + App.config.tileSize / 2,
+      this.path[this.currentPathIndex].point.y * App.config.tileSize + App.config.tileSize / 2
+    );
+
+    this.moving = false;
+  }
 
   update() {
     if (this.currentTarget) {
@@ -369,16 +391,8 @@ export class Adversary {
         return;
       }
 
-      // check if we reached the target
       if (this.atTarget()) {
-        console.log('Reached target', this.path[this.currentPathIndex].point);
-        this.currentPathIndex++;
-        this.currentTarget = new PIXI.Point(
-          this.path[this.currentPathIndex].point.x * App.config.tileSize + App.config.tileSize / 2,
-          this.path[this.currentPathIndex].point.y * App.config.tileSize + App.config.tileSize / 2
-        );
-
-        this.moving = false;
+        this.body.isSensor = false;
       }
 
       // if we've not reached the end, move towards the target
