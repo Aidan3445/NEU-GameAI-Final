@@ -37,23 +37,23 @@ export class ItemSelector {
         return remainingItems[0]
         
         const { path, pathWeights } = adversary.calculatePath(aiPos, flagPos, levelPlan, false);
-        const startingPathCost = pathWeights.reduce((acc, weight) => acc + weight, 0);
+        const sumPathWeights = pathWeights.reduce((acc, weight) => acc + weight, 0);
         
         if (path.length === 0) {
             // this is when no path is found originally
             console.log("No path found");
-            return null;
+            return ItemType.Platform;
         }
 
         // start at the first one??
         const maxWeight = pathWeights[0];
-        const maxPathIndex = path[0]
+        const maxPathNode = path[0]
 
         for (let i = 0; i < pathWeights.length; i++) {
             const weight = pathWeights[i];
             if (weight > maxWeight) {
                 let maxWeight = weight;
-                const pathIndex = path[i];
+                const pathNode = path[i+1];
             }
         }
 

@@ -2,7 +2,7 @@ import * as PIXI from "pixi.js";
 import Matter from "matter-js";
 import { App } from "../system/App";
 import { Node } from "./node";
-import { estimateArc, estimateArcInverse, getLevelNodes, getNodeKey } from "./preprocess";
+import { estimateArc, estimateArcInverse, getLevelNodes, getNodeKey, jumpArcLength } from "./preprocess";
 
 export class Adversary {
   container: PIXI.Container;
@@ -100,6 +100,11 @@ export class Adversary {
       this.visualizePath();
     }
 
+    for (let i = 0; i < path.length; i++) {
+      console.log(path[i].point.x * App.config.tileSize, path[i].point.y * App.config.tileSize, pathWeights[i]);
+    }
+    // console.log('pathWeight', pathWeights)
+    // console.log('path', path)
     return { path: this.path, pathWeights: pathWeights }
   }
 
@@ -187,22 +192,28 @@ export class Adversary {
     const pathWeights = [];
 
     while (current) {
+      console.log('hi');
       path.unshift(current);
       const parent: Node | null = current.parent;
       if (!parent) {
         pathWeights.unshift(0);
         current = parent;
-        break;
+        continue;
       }
-
-      const parentKey = getNodeKey(parent?.point.x, parent?.point.y);
-      // const weight = current?.neighbors.get(parentKey);
-      for (const [Nkey, weight] of current?.neighbors) {
-        if (Nkey === parentKey) {
-          pathWeights.unshift(weight);
-        }
+      
+      const parentX = parent.point.x;
+      const parentY = parent.point.y;
+      const currentX = current.point.x;
+      const currentY = current.point.y;
+      
+      let distance = 0
+      if (currentY == parentY && Math.abs(currentX - parentX) === 1) {
+        distance = 1
+      } else {
+        distance = jumpArcLength(currentX, currentY, parentX, parentY)
       }
-
+      
+      pathWeights.unshift(distance);
       current = parent;
     }
 

@@ -62,14 +62,15 @@ export class GameScene extends Scene {
     this.createPlatforms(platforms);
     this.createSpikes(spikes);
     this.adversaryStart = AIStart;
-    this.availableItems = this.randomizeItems();
-    this.createItemButtons();
 
     this.createPlayer();
     this.spawn(this.playerSpawn)
     this.disablePlayerMovement();
 
     this.createAdversary(AIStart);
+    this.availableItems = this.randomizeItems();
+    
+    this.createItemButtons();
 
     this.physicsEvents();
     this.keyEvents();
@@ -463,6 +464,12 @@ export class GameScene extends Scene {
   }
 
   randomizeItems() {
+    const {path} = this.adversary.calculatePath(this.adversaryStart, this.flagPoint, this.levelPlan, false)
+    if (path.length === 0) {
+      console.log("No path found");
+      return [ItemType.Platform, ItemType.Platform, ItemType.Bomb];
+    }
+
     const randomItems = [];
     const allItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes];
     for (let i = 0; i < allItems.length; i++) {
