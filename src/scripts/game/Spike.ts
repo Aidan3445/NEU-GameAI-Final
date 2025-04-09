@@ -6,6 +6,7 @@ export class Spike {
   container: PIXI.Container;
   sprite!: PIXI.Sprite;
   body!: Matter.Body;
+  gridPoint!: PIXI.Point;
 
   debugText = new PIXI.Text({
     text: "",
@@ -19,15 +20,17 @@ export class Spike {
 
   constructor(point: PIXI.Point) {
     this.container = new PIXI.Container();
+    this.gridPoint = point;
     this.createSprite(point);
     this.createBody(point);
-    this.sprite.position = this.body.position;
   }
 
   createSprite(point: PIXI.Point) {
     this.sprite = App.sprite("spikes");
     this.sprite.setSize(App.config.tileSize);
     this.container.addChild(this.sprite);
+    this.sprite.position.x = point.x * App.config.tileSize;
+    this.sprite.position.y = point.y * App.config.tileSize;
   }
 
   createBody(point: PIXI.Point) {
