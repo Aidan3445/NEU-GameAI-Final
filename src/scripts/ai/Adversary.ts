@@ -68,7 +68,7 @@ export class Adversary {
     Matter.World.add(App.physics.world, this.body);
   }
 
-  calculatePath(start: PIXI.Point, target: PIXI.Point, levelState: string[]) {
+  calculatePath(start: PIXI.Point, target: PIXI.Point, levelState: string[], visualize: boolean): { path: Node[], pathWeights: number[] } {
     const nodes = getLevelNodes(levelState);
 
     // Find the closest node to the start and target positions
@@ -81,23 +81,29 @@ export class Adversary {
     if (!startNode || !targetNode) {
       console.error("Could not find start or target node");
       this.noPathFound();
-      return;
+      return { path: [], pathWeights: [] };
     }
 
     // Perform A* search
-    this.path = this.aStar(nodes, startNode, targetNode);
+    const { path, pathWeights } = this.aStar(nodes, startNode, targetNode);
+
+    this.path = path
 
     if (this.path.length === 0) {
       console.error("No path found from", startKey, "to", targetKey);
       this.noPathFound();
-      return;
+      return { path: [], pathWeights: [] };
     }
 
     // Visualize the path
-    this.visualizePath();
+    if (visualize) {
+      this.visualizePath();
+    }
+
+    return { path: this.path, pathWeights: pathWeights }
   }
 
-  aStar(nodes: Map<string, Node>, start: Node, goal: Node): Node[] {
+  aStar(nodes: Map<string, Node>, start: Node, goal: Node): { path: Node[], pathWeights: number[] } {
     // Reset all nodes
     for (const [_, node] of nodes) {
       node.visited = false;
@@ -136,7 +142,8 @@ export class Adversary {
 
       if (getKey(current) === getKey(goal)) {
         // Reconstruct path
-        return this.reconstructPath(current);
+        const { path, pathWeights } = this.reconstructPath(current);
+        return { path: path, pathWeights: pathWeights };
       }
 
       // Remove current from openSet
@@ -166,7 +173,7 @@ export class Adversary {
     }
 
     console.error("No path found");
-    return [];
+    return { path: [], pathWeights: [] };
   }
 
   heuristic(a: Node, b: Node): number {
@@ -174,16 +181,32 @@ export class Adversary {
     return Math.abs(a.point.x - b.point.x) + Math.abs(a.point.y - b.point.y);
   }
 
-  reconstructPath(goal: Node): Node[] {
+  reconstructPath(goal: Node): { path: Node[], pathWeights: number[] } {
     const path: Node[] = [];
     let current: Node | null = goal;
+    const pathWeights = [];
 
     while (current) {
       path.unshift(current);
-      current = current.parent;
+      const parent: Node | null = current.parent;
+      if (!parent) {
+        pathWeights.unshift(0);
+        current = parent;
+        break;
+      }
+
+      const parentKey = getNodeKey(parent?.point.x, parent?.point.y);
+      // const weight = current?.neighbors.get(parentKey);
+      for (const [Nkey, weight] of current?.neighbors) {
+        if (Nkey === parentKey) {
+          pathWeights.unshift(weight);
+        }
+      }
+
+      current = parent;
     }
 
-    return path;
+    return { path: path, pathWeights: pathWeights };
   }
 
   visualizePath() {
@@ -252,7 +275,7 @@ export class Adversary {
   }
 
   goToFlag(start: PIXI.Point, target: PIXI.Point, levelState: string[]) {
-    this.calculatePath(start, target, levelState);
+    this.calculatePath(start, target, levelState, true);
 
     if (this.path.length < 2) {
       this.noPathFound();

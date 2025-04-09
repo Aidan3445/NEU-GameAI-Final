@@ -1,4 +1,6 @@
 import * as PIXI from 'pixi.js';
+import { Adversary } from './Adversary';
+import path from 'path';
 
 // Item types
 export enum ItemType {
@@ -24,97 +26,44 @@ interface GameState {
  */
 export class ItemSelector {
     constructor(private availableItems: ItemType[]) {}
-
-    /**
-     * Analyze the current game state
-     */
-    analyzeGameState(levelPlan: string[], playerPos: PIXI.Point, aiPos: PIXI.Point, flagPos: PIXI.Point): GameState {
-        // Calculate platform count
-        const platformCount = levelPlan.reduce((count, row) => 
-            count + (row.match(/P/g) || []).length, 0);
-        
-        // Simple distance calculation (can be improved with actual pathfinding)
-        const distanceToFlag = Math.abs(aiPos.x - flagPos.x) + Math.abs(aiPos.y - flagPos.y);
-        const playerDistanceToFlag = Math.abs(playerPos.x - flagPos.x) + Math.abs(playerPos.y - flagPos.y);
-
-        // Determine critical paths by checking for narrow passages
-        let criticalPaths = 0;
-        for (let y = 0; y < levelPlan.length; y++) {
-            let inPath = false;
-            let pathWidth = 0;
-            
-            for (let x = 0; x < levelPlan[y].length; x++) {
-                if (levelPlan[y][x] === ' ' && (y + 1 >= levelPlan.length || levelPlan[y + 1][x] === 'P')) {
-                    if (!inPath) {
-                        inPath = true;
-                        pathWidth = 0;
-                    }
-                    pathWidth++;
-                } else if (inPath) {
-                    inPath = false;
-                    if (pathWidth <= 3) {
-                        criticalPaths++;
-                    }
-                }
-            }
-        }
-        
-        // Estimate flag accessibility (lower is harder)
-        // This is a simplified calculation - the actual implementation would use pathfinding
-        const flagAccessibility = this.calculateFlagAccessibility(levelPlan, flagPos);
-        
-        return {
-            playerItem: ItemType.Platform, // This will be set by the caller
-            levelState: levelPlan,
-            platformCount,
-            distanceToFlag,
-            playerDistanceToFlag,
-            criticalPaths,
-            flagAccessibility
-        };
-    }
-    
-    /**
-     * Calculate how accessible the flag is (0-1, where 1 is easily accessible)
-     */
-    private calculateFlagAccessibility(levelPlan: string[], flagPos: PIXI.Point): number {
-        // Check if flag is on a platform and how many platforms are nearby
-        const flagY = Math.floor(flagPos.y);
-        const flagX = Math.floor(flagPos.x);
-        
-        // Check if there's a platform below the flag
-        const hasPlatformBelow = flagY + 1 < levelPlan.length && 
-                                levelPlan[flagY + 1][flagX] === 'P';
-        
-        if (!hasPlatformBelow) {
-            return 0.9; // Flag is floating, easy to access
-        }
-        
-        // Check number of platforms surrounding the flag
-        let platformsAround = 0;
-        for (let y = Math.max(0, flagY - 2); y <= Math.min(levelPlan.length - 1, flagY + 2); y++) {
-            for (let x = Math.max(0, flagX - 2); x <= Math.min(levelPlan[y].length - 1, flagX + 2); x++) {
-                if (levelPlan[y][x] === 'P') {
-                    platformsAround++;
-                }
-            }
-        }
-        
-        // More platforms around means harder to access
-        return 1 - Math.min(platformsAround / 10, 0.9);
-    }
     
     /**
      * Decision tree to select the best item based on game state
      */
-    selectItem(playerItem: ItemType, levelPlan: string[], playerPos: PIXI.Point, aiPos: PIXI.Point, flagPos: PIXI.Point): ItemType {
+    selectItem(playerItem: ItemType, levelPlan: string[], aiPos: PIXI.Point, flagPos: PIXI.Point, adversary: Adversary): ItemType {
         // Get remaining items
         const remainingItems = this.availableItems;
         console.log('Remaining items:', remainingItems);
+        return remainingItems[0]
+        
+        const { path, pathWeights } = adversary.calculatePath(aiPos, flagPos, levelPlan, false);
+        const startingPathCost = pathWeights.reduce((acc, weight) => acc + weight, 0);
+        
+        if (path.length === 0) {
+            // this is when no path is found originally
+            console.log("No path found");
+            return null;
+        }
+
+        // start at the first one??
+        const maxWeight = pathWeights[0];
+        const maxPathIndex = path[0]
+
+        for (let i = 0; i < pathWeights.length; i++) {
+            const weight = pathWeights[i];
+            if (weight > maxWeight) {
+                let maxWeight = weight;
+                const pathIndex = path[i];
+            }
+        }
+
+        addPlatform(pathIndex, levelPlan);
+        
+
         
         
         // Analyze current game state
-        const gameState = this.analyzeGameState(levelPlan, playerPos, aiPos, flagPos);
+        const gameState = this.analyzeGameState(levelPlan, adversary);
         gameState.playerItem = playerItem;
         
         // Decision tree based on player's item and game state
@@ -240,4 +189,5 @@ export class ItemSelector {
         // If we reach here, just pick the first remaining item
         return remainingItems[0];
     }
-} 
+
+  }
