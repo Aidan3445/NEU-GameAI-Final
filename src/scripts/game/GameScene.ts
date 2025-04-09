@@ -13,7 +13,7 @@ import { ItemType } from '../ai/ItemSelector';
 
 import { Spike } from './Spike';
 import { ItemButton } from './ItemButton';
-import { level, oldTestLevel, rlevel } from './levels';
+import { GameLevel, level, oldTestLevel, rlevel } from './levels';
 import { ItemSelector } from '../ai/ItemSelector';
 
 export class GameScene extends Scene {
@@ -51,7 +51,8 @@ export class GameScene extends Scene {
   placementText: PIXI.Text | null = null;
 
   create() {
-    this.levelPlan = level;
+    this.levelPlan = GameLevel;
+    console.log(' dat point', GameLevel[19][39]);
     const { playerStart, AIStart, platforms, spikes, levelRect, flagPoint } = buildLevel(this.levelPlan);
     getLevelNodes(this.levelPlan, true);
 
@@ -73,7 +74,7 @@ export class GameScene extends Scene {
     this.physicsEvents();
     this.keyEvents();
 
-    this.spawn(playerStart);
+    this.spawn();
   }
 
   createCamera(levelRect: PIXI.Rectangle) {
@@ -179,22 +180,32 @@ export class GameScene extends Scene {
   }
 
   updateLevelPlan(cell: PIXI.Point, newChar: string, length: number) {
-    console.log('updating level plan', cell, newChar, length, this.levelPlan);
+    console.log('updating level plan', cell, newChar, length, this.levelPlan.slice());
     this.levelPlan[cell.y] = this.levelPlan[cell.y].substring(0, cell.x) +
       newChar.repeat(length) +
-      this.levelPlan[cell.y].substring(cell.x + 1 + length);
+      this.levelPlan[cell.y].substring(cell.x + length);
   }
 
-  // spawn the player at a specific grid position
-  // also sets a spawn point for the player
-  spawn(position: PIXI.Point) {
-    this.playerSpawn = position;
-
-    position = new PIXI.Point(
-      position.x * App.config.tileSize + App.config.tileSize / 2,
-      position.y * App.config.tileSize + App.config.tileSize / 2
+  spawn() {
+    // spawn player
+    const position = new PIXI.Point(
+      this.playerSpawn.x * App.config.tileSize + App.config.tileSize / 2,
+      this.playerSpawn.y * App.config.tileSize + App.config.tileSize / 2
     );
     Matter.Body.setPosition(this.player.body, position);
+    Matter.Body.setVelocity(this.player.body, {
+      x: 0,
+      y: 0
+    });
+
+    // spawn adversary
+    const adversaryPosition = new PIXI.Point(
+      this.adversaryStart.x * App.config.tileSize + App.config.tileSize / 2,
+      this.adversaryStart.y * App.config.tileSize + App.config.tileSize / 2
+    );
+    Matter.Body.setPosition(this.adversary.body, adversaryPosition);
+
+    this.gameStage = 0;
   }
 
   // Disable player movement
@@ -258,7 +269,11 @@ export class GameScene extends Scene {
 
           if (player && flag) {
             console.log("Player won!");
-            this.resetGame();
+            this.disablePlayerMovement();
+
+            setTimeout(() => {
+              this.resetGame();
+            }, 1000);
           }
 
           // if (player && platform) {
@@ -274,7 +289,11 @@ export class GameScene extends Scene {
 
           if (adversary && flag) {
             console.log("Adversary won!");
-            this.resetGame();
+            this.disablePlayerMovement();
+
+            setTimeout(() => {
+              this.resetGame();
+            }, 1000);
           }
 
           if (adversary && platform && (pair.collision.normal.y === 0 ||
@@ -285,9 +304,12 @@ export class GameScene extends Scene {
           if (player && spike) {
             // somehow lag player behind
             console.log("AI won, player died");
-            this.resetGame();
-          }
+            this.disablePlayerMovement();
 
+            setTimeout(() => {
+              this.resetGame();
+            }, 1000);
+          }
         });
       });
 
@@ -297,16 +319,13 @@ export class GameScene extends Scene {
           const colliders = [pair.bodyA, pair.bodyB];
 
           const player = colliders.find(body => body.id === this.player?.body.id);
-          const adversary = colliders.find(body => body.id === this.adversary?.body.id);
 
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
-          const spike = colliders.find(body => this.spikes.some(s => s.body.id === body.id));
 
           if (player && platform) {
             // add delay for more forgiving platforming
             setTimeout(() => this.player.leftPlatform(pair.collision.normal), 100);
           }
-
         });
       });
   }
@@ -358,6 +377,9 @@ export class GameScene extends Scene {
           case "s":
             App.controllerInput.drop = false;
             break;
+          case "r":
+            if (this.gameStage === 5) this.resetGame();
+            break;
         }
 
         console.log(!App.controllerInput.left, !App.controllerInput.right, this.player.canJump)
@@ -372,13 +394,13 @@ export class GameScene extends Scene {
     });
   }
 
-
   update(dt: PIXI.Ticker) {
     // console.log(this.itemSelectionUI)
 
     // this is the starting game stage, player has not chosen an item yet
     if (this.gameStage === 0) {
       this.player.update(this.levelPlan);
+      this.adversary.update();
       return;
     }
 
@@ -406,7 +428,7 @@ export class GameScene extends Scene {
     if (this.player.body.position.y > this.camera.shift.height) {
       console.log("Player fell off the map", this.playerSpawn.x, this.playerSpawn.y,
         this.player.body.position.x, this.player.body.position.y);
-      this.spawn(this.playerSpawn);
+      this.spawn();
       // this.camera.state = new PIXI.Point(0, 0);
     }
 
@@ -443,7 +465,7 @@ export class GameScene extends Scene {
 
   resetGame() {
     // Reset player position
-    this.spawn(this.playerSpawn);
+    this.spawn();
 
     // Reset game stage and items
     this.gameStage = 0;
@@ -462,7 +484,7 @@ export class GameScene extends Scene {
     // Start item selection again
     this.createItemButtons();
 
-    this.spawn(this.playerSpawn);
+    this.spawn();
   }
 
   randomizeItems() {
@@ -811,6 +833,12 @@ export class GameScene extends Scene {
    */
   placeAIItem() {
     if (!this.aiItem) return;
+
+
+    if (Math.random()) {
+      this.gameStage = 3;
+      return;
+    }
 
     // Show message about AI's action
     const aiActionText = new PIXI.Text({

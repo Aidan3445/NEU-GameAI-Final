@@ -95,6 +95,7 @@ export class Adversary {
 
     // Visualize the path
     this.visualizePath();
+    console.log("Path found:", this.path, nodes);
   }
 
   aStar(nodes: Map<string, Node>, start: Node, goal: Node): Node[] {
@@ -247,7 +248,6 @@ export class Adversary {
   }
 
   get velocity() {
-    // console.log(this.body.velocity);
     return this.body.velocity;
   }
 
@@ -285,9 +285,11 @@ export class Adversary {
     const targetNode = this.path[this.currentPathIndex].point;
     const previousNode = this.path[this.currentPathIndex - 1].point;
 
-    const direction = targetNode.x - previousNode.x;
-    if (targetNode.y === previousNode.y && Math.abs(direction) === 1) {
-      this.walk(direction);
+    const currentTileX = Math.floor(this.body.position.x / App.config.tileSize);
+    const currentTileY = Math.floor(this.body.position.y / App.config.tileSize);
+    if ((targetNode.y === previousNode.y && Math.abs(targetNode.x - previousNode.x) === 1)) { //||
+      //(Math.abs(targetNode.x - currentTileX) <= 1 && targetNode.y === currentTileY)) {
+      this.walk(targetNode.x - currentTileX);
     } else {
       this.jump(targetNode, previousNode);
     }
@@ -305,9 +307,15 @@ export class Adversary {
     });
 
     this.moving = true;
+    this.canJump = true;
   }
 
   jump(targetNode: PIXI.Point, previousNode: PIXI.Point) {
+    if (this.atTarget()) {
+      this.nextTarget();
+      return;
+    }
+
     const currentTileY = this.body.position.y / App.config.tileSize;
     // instant call (once not looped)
     if (this.canJump) {
@@ -349,7 +357,6 @@ export class Adversary {
         x: (x + previousNode.x) * App.config.tileSize + App.config.tileSize / 2,
         y: this.body.position.y
       });
-
     }
   }
 
@@ -372,6 +379,12 @@ export class Adversary {
   }
 
   nextTarget() {
+    if (this.currentPathIndex >= this.path.length - 1) {
+      this.reachedEnd = true;
+      this.currentTarget = null;
+      return;
+    }
+
     console.log('Reached target', this.path[this.currentPathIndex].point);
     this.currentPathIndex++;
     this.currentTarget = new PIXI.Point(
@@ -380,6 +393,7 @@ export class Adversary {
     );
 
     this.moving = false;
+    this.canJump = true;
   }
 
   update() {

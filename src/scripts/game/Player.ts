@@ -91,15 +91,8 @@ export class Player {
         y: 0
       });
 
-      const wallJump = 0;
-      /*
-        this.contacts.reduce((acc, normal) => {
-        return acc + normal.x;
-      }, 0);
-      */
-
       Matter.Body.applyForce(this.body, this.body.position, {
-        x: wallJump * App.config.playerSpeed * 0.5,
+        x: 0,
         y: -App.config.playerJump
       });
       this.canJump = false;
@@ -146,11 +139,8 @@ export class Player {
   }
 
   update(level: string[]) {
-    // console.log(this.contacts, this.canJump)
     this.sprite.position = this.body.position;
     this.sprite.rotation = this.body.angle;
-
-    this.debugText.text = `${this.body.position.x.toFixed(2)}, ${this.body.position.y.toFixed(2)}`;
 
     this.debugTrail();
     this.debugNeighbors(level);
@@ -255,6 +245,12 @@ export class Player {
         App.config.tileSize);
       frame.stroke(0xff00ff);
       this.backgroundContainer.addChild(frame);
+
+      if (neighbor.point.y === node.point.y &&
+        Math.abs(neighbor.point.x - node.point.x) === 1) {
+        this.neighborRects.push(frame);
+        continue;
+      }
 
       // draw estimated jump arc
       const arc = new PIXI.Graphics();

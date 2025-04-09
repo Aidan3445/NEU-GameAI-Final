@@ -3,7 +3,6 @@ import { Node } from './node';
 import { App } from '../system/App';
 
 const traversableChars = [' ', 'X', 'A', 'F'];
-// remove S when we implement spikes
 
 export function getNodeKey(x: number, y: number) {
   return `${x},${y}`;
@@ -16,15 +15,12 @@ export function getLevelNodes(levelPlan: string[], log: boolean = false) {
   // Get all the spaces above a platform that you can stand on
   for (let y = 0; y < levelPlan.length; y++) {
     for (let x = 0; x < levelPlan[y].length; x++) {
-      if (!traversableChars.includes(levelPlan[y][x])) {
+      if (levelPlan[y][x].toUpperCase() === 'P') {
         const traversible = y === 0 || traversableChars.includes(levelPlan[y - 1][x]);
         if (traversible) {
-          // if (levelPlan[y - 1]?.[x] === 'X') {
-          //   debugPlayerStart = new PIXI.Point(x, y - 1);
-          // }
           const node = new Node(new PIXI.Point(x, y - 1));
-          const key = `${x},${y - 1}`;
-          nodes.set(key, node);
+          nodes.set(getNodeKey(x, y - 1), node);
+          if (x === 39 && y - 1 === 18) console.log('Found it', levelPlan[19][39]);
         }
       }
     }
@@ -68,7 +64,7 @@ export function setNeighbors(
   const leftRectBound = node.point.x - Math.floor(App.config.M / 2);
   const rightRectBound = node.point.x + Math.floor(App.config.M / 2);
   for (let x = leftRectBound; x <= rightRectBound; x++) {
-    for (let y = node.point.y - MAX_JUMP_HEIGHT; y <= node.point.y + 20; y++) {
+    for (let y = node.point.y - MAX_JUMP_HEIGHT; y <= node.point.y + 10; y++) {
       if (x === node.point.x && y == node.point.y) continue; // skip the node itself
       const nodeInCenterRect = nodes.get(getNodeKey(x, y));
       if (nodeInCenterRect) {
@@ -84,6 +80,9 @@ export function setNeighbors(
     }
   }
 
+  /*
+    * Would have loved to get this to work
+    *
   // check left and right parabolas
   // we can do this simultaneously since the parabola is symmetric
   // we are only checking X values to the left of the center rectangle
@@ -93,11 +92,11 @@ export function setNeighbors(
     const rightX = node.point.x + x;
     const yMax = node.point.y + App.config.J;
     // check if the node is within the parabola up to 20 tiles below the tile
-    for (let y = yMax; y <= yMax + 20; y++) {
+    for (let y = yMax; y <= yMax + 5; y++) {
       const nodeUnderParabolaLeft = nodes.get(getNodeKey(leftX, y));
       if (nodeUnderParabolaLeft) {
         // check if the path is clear
-        if (!clearArc(node, nodeUnderParabolaLeft, levelPlan, log)) {
+        if (clearArc(node, nodeUnderParabolaLeft, levelPlan, log)) {
           node.addNeighbor(
             getNodeKey(leftX, y),
             jumpArcLength(node.point.x, node.point.y, leftX, y, App.config.J),
@@ -207,113 +206,80 @@ export function jumpArcLength(
   return Math.abs(integral(x2) - integral(x1));
 }
 
-// https://dedu.fr/projects/bresenham/
-export function clearLine(
-  x1: number,
-  y1: number,
-  x2: number,
-  y2: number,
-  levelPlan: string[],
-  log: boolean = false,
-): boolean {
-  let y = Math.round(y1);
-  let x = Math.round(x1);
-  let dx = Math.round(x2 - x1);
-  let dy = Math.round(y2 - y1);
-  let ystep: number;
-  let xstep: number;
-  let ddy: number;
-  let ddx: number;
-  let error: number;
-  let errorprev: number;
+// https://stackoverflow.com/questions/18881456/supercover-dda-algorithm
+export function clearLine(xStart: number, yStart: number, xEnd: number, yEnd: number, levelPlan: string[], log: boolean = false) {
+  const check = (offsetY: number) => {
+    const x0 = xStart + 0.5;
+    const y0 = yStart + offsetY;
+    const x1 = xEnd + 0.5;
+    const y1 = yEnd + offsetY;
 
-  // check if the start point is traversable
-  if (!traversableChars.includes(levelPlan[y]?.[x]) && y >= 0) {
-    return false;
-  }
+    const vx = x1 - x0;
+    const vy = y1 - y0;
 
-  if (dy < 0) {
-    ystep = -1;
-    dy = -dy;
-  } else {
-    ystep = 1;
-  }
+    const dx = Math.sqrt(1 + (vy / vx) ** 2);
+    const dy = Math.sqrt(1 + (vx / vy) ** 2);
 
-  if (dx < 0) {
-    xstep = -1;
-    dx = -dx;
-  } else {
-    xstep = 1;
-  }
+    let ix = Math.floor(x0);
+    let iy = Math.floor(y0);
 
-  ddy = 2 * dy;
-  ddx = 2 * dx;
+    let sx, ex;
+    if (vx < 0) {
+      sx = -1;
+      ex = (x0 - ix) * dx;
+    } else {
+      sx = 1;
+      ex = (ix + 1 - x0) * dx;
+    }
 
-  if (ddx >= ddy) {
-    errorprev = error = dx;
-    for (let i = 0; i < dx; i++) {
-      x += xstep;
-      error += ddy;
-      if (error > ddx) {
-        y += ystep;
-        error -= ddx;
+    let sy, ey;
+    if (vy < 0) {
+      sy = -1;
+      ey = (y0 - iy) * dy;
+    } else {
+      sy = 1;
+      ey = (iy + 1 - y0) * dy;
+    }
 
-        // check if the point is traversable
-        if (error + errorprev < ddx) {
-          if (!traversableChars.includes(levelPlan[y - ystep]?.[x]) && y - ystep >= 0) {
-            return false;
-          }
-        } else if (error + errorprev > ddx) {
-          if (!traversableChars.includes(levelPlan[y]?.[x - xstep]) && y >= 0) {
-            return false;
-          }
-        } else {
-          if ((!traversableChars.includes(levelPlan[y]?.[x - xstep]) && y >= 0) ||
-            (!traversableChars.includes(levelPlan[y - ystep]?.[x]) && y - ystep >= 0)) {
-            return false;
-          }
-        }
+    const len = Math.sqrt(vx ** 2 + vy ** 2);
+    let done = false;
+
+    while (Math.min(ex, ey) <= len) {
+      const rx = ix;
+      const ry = iy;
+      if (ex < ey) {
+        ex += dx;
+        ix += sx;
+      } else {
+        ey += dy;
+        iy += sy;
       }
-      if (!traversableChars.includes(levelPlan[y]?.[x]) && y >= 0) {
+      if (!traversableChars.includes(levelPlan[ry]?.[rx]) && ry >= 0) {
+        if (log) {
+          console.log(`Blocked at (${rx}, ${ry})`);
+        }
         return false;
       }
-      errorprev = error;
     }
-  } else {
-    errorprev = error = dy;
-    for (let i = 0; i < dy; i++) {
-      y += ystep;
-      error += ddx;
-      if (error > ddy) {
-        x += xstep;
-        error -= ddy;
 
-        // check if the point is traversable
-        if (error + errorprev < ddy) {
-          if (!traversableChars.includes(levelPlan[y]?.[x - xstep]) && y >= 0) {
-            return false;
-          }
-        } else if (error + errorprev > ddy) {
-          if (!traversableChars.includes(levelPlan[y - ystep]?.[x]) && y - ystep >= 0) {
-            return false;
-          }
-        } else {
-          if ((!traversableChars.includes(levelPlan[y - ystep]?.[x]) && y - ystep >= 0) ||
-            (!traversableChars.includes(levelPlan[y]?.[x - xstep]) && y >= 0)) {
-            return false;
-          }
+    if (!done) {
+      done = true;
+      if (!traversableChars.includes(levelPlan[iy]?.[ix]) && iy >= 0) {
+        if (log) {
+          console.log(`Blocked at (${ix}, ${iy})`);
         }
-      }
-      if (!traversableChars.includes(levelPlan[y]?.[x]) && y >= 0) {
         return false;
       }
-      errorprev = error;
     }
+
+    return true;
   }
 
-  // we have reached the end point and the path is clear
-  return true;
+  // we want to make sure the whole character can fit so we run 
+  // the check twice, bit of a hack but works for most cases
+  return check(0) && check(0.5);
 }
+
 
 // check if the path is clear along an arc from the start node to the end node
 export function clearArc(
@@ -321,7 +287,7 @@ export function clearArc(
   node2: Node,
   levelPlan: string[],
   log: boolean = false,
-  steps: number = 20,
+  steps: number = 100,
 ): boolean {
   const stepSize = (node2.point.x - node.point.x) / steps;
 
@@ -349,7 +315,6 @@ export function clearArc(
       step,
       y,
       levelPlan,
-      log,
     )) {
       return false;
     } else {
