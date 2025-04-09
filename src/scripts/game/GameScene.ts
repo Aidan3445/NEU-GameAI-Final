@@ -66,13 +66,14 @@ export class GameScene extends Scene {
     this.createItemButtons();
 
     this.createPlayer();
-    this.spawn(this.playerSpawn)
     this.disablePlayerMovement();
 
     this.createAdversary(AIStart);
 
     this.physicsEvents();
     this.keyEvents();
+
+    this.spawn(playerStart);
   }
 
   createCamera(levelRect: PIXI.Rectangle) {
@@ -193,7 +194,6 @@ export class GameScene extends Scene {
       position.x * App.config.tileSize + App.config.tileSize / 2,
       position.y * App.config.tileSize + App.config.tileSize / 2
     );
-
     Matter.Body.setPosition(this.player.body, position);
   }
 
@@ -378,6 +378,7 @@ export class GameScene extends Scene {
 
     // this is the starting game stage, player has not chosen an item yet
     if (this.gameStage === 0) {
+      this.player.update(this.levelPlan);
       return;
     }
 
@@ -460,6 +461,8 @@ export class GameScene extends Scene {
 
     // Start item selection again
     this.createItemButtons();
+
+    this.spawn(this.playerSpawn);
   }
 
   randomizeItems() {
