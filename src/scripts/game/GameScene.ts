@@ -39,13 +39,14 @@ export class GameScene extends Scene {
   spikes!: Spike[];
 
   // Item selection related properties
-  availableItems! : ItemType[];
+  availableItems!: ItemType[];
   playerItem: ItemType | null = null;
   aiItem: ItemType | null = null;
   itemSelectionUI!: PIXI.Container;
   itemPlacementActive: boolean = false;
   itemPlacementPreview: PIXI.Graphics | null = null;
   selectedPlatforms: Platform[] = [];
+  selectedSpike?: Spike;
   flagPoint!: PIXI.Point;
   placementText: PIXI.Text | null = null;
 
@@ -103,9 +104,18 @@ export class GameScene extends Scene {
   }
 
   addSpike(spike: Spike) {
+    // check if the position is not valid
+    if (this.levelPlan.length <= spike.gridPoint.y ||
+      this.levelPlan[spike.gridPoint.y].length <= spike.gridPoint.x) {
+      console.error("Invalid spike position");
+      return;
+    }
+
     this.spikes.push(spike);
     this.container.addChild(spike.container);
     spike.container.zIndex = 50;
+
+    this.updateLevelPlan(spike.gridPoint, 'S', 1);
   }
 
   createPlatforms(platforms: PIXI.Rectangle[]) {
@@ -118,9 +128,46 @@ export class GameScene extends Scene {
   }
 
   addPlatform(platform: Platform) {
+    // check if the position is not valid
+    if (this.levelPlan.length <= platform.gridRect.y ||
+      this.levelPlan[platform.gridRect.y].length <= platform.gridRect.x) {
+      console.error("Invalid platform position");
+      return;
+    }
+
     this.platforms.push(platform);
     this.container.addChild(platform.container);
     platform.container.zIndex = 50;
+
+    for (let i = 0; i < platform.gridRect.height; i++) {
+      this.updateLevelPlan(
+        new PIXI.Point(platform.gridRect.x, platform.gridRect.y + i),
+        'P',
+        platform.gridRect.width
+      );
+    }
+  }
+
+  blowUpPlatform(platform: Platform) {
+    this.platforms = this.platforms.filter(p => p !== platform);
+    this.container.removeChild(platform.container);
+    platform.destroy();
+
+    for (let i = 0; i < platform.gridRect.height; i++) {
+      this.updateLevelPlan(
+        new PIXI.Point(platform.gridRect.x, platform.gridRect.y + i),
+        ' ',
+        platform.gridRect.width
+      );
+    }
+  }
+
+  blowUpSpike(spike: Spike) {
+    this.spikes = this.spikes.filter(s => s !== spike);
+    this.container.removeChild(spike.container);
+    spike.destroy();
+
+    this.updateLevelPlan(spike.gridPoint, ' ', 1);
   }
 
   createAdversary(start: PIXI.Point) {
@@ -128,6 +175,13 @@ export class GameScene extends Scene {
     this.adversary = new Adversary(advStart, this.camera.bg.container);
     this.container.addChild(this.adversary.container);
     this.adversary.container.zIndex = 90;
+  }
+
+  updateLevelPlan(cell: PIXI.Point, newChar: string, length: number) {
+    console.log('updating level plan', cell, newChar, length, this.levelPlan);
+    this.levelPlan[cell.y] = this.levelPlan[cell.y].substring(0, cell.x) +
+      newChar.repeat(length) +
+      this.levelPlan[cell.y].substring(cell.x + 1 + length);
   }
 
   // spawn the player at a specific grid position
@@ -426,16 +480,15 @@ export class GameScene extends Scene {
     for (let i = 0; i < this.availableItems.length; i++) {
       const button = new ItemButton(this.availableItems[i], i);
       const itemValue = this.availableItems[i]; // Store the current item
-      const itemIndex = i; // Store the current index
-      
+
       button.bg.on('pointerdown', () => {
         if (this.gameStage === 0) {
           console.log('Item selected:', itemValue);
           this.playerItem = itemValue;
-          
+
           // Remove this item from the array of items
           this.availableItems.splice(this.availableItems.indexOf(itemValue), 1);
-          
+
           this.gameStage = 1;
         }
       });
@@ -556,6 +609,34 @@ export class GameScene extends Scene {
         // Highlight platforms under cursor
         this.selectedPlatforms = this.platforms.filter(platform => {
           const bounds = platform.container.getBounds();
+
+          // is under player spawn point
+          if (platform.gridRect.x <= this.playerSpawn.x &&
+            platform.gridRect.x + platform.gridRect.width >= this.playerSpawn.x &&
+            platform.gridRect.y === this.playerSpawn.y + 1) {
+            return false;
+          }
+
+          // is under adversary spawn point
+          if (platform.gridRect.x <= this.adversaryStart.x &&
+            platform.gridRect.x + platform.gridRect.width >= this.adversaryStart.x &&
+            platform.gridRect.y === this.adversaryStart.y + 1) {
+            return false;
+          }
+
+          // is under flag point
+          if (platform.gridRect.x <= this.flagPoint.x &&
+            platform.gridRect.x + platform.gridRect.width >= this.flagPoint.x &&
+            platform.gridRect.y === this.flagPoint.y + 1) {
+            return false;
+          }
+
+          return mouseX >= bounds.x && mouseX <= bounds.x + bounds.width &&
+            mouseY >= bounds.y && mouseY <= bounds.y + bounds.height;
+        });
+
+        this.selectedSpike = this.spikes.find(spike => {
+          const bounds = spike.container.getBounds();
           return mouseX >= bounds.x && mouseX <= bounds.x + bounds.width &&
             mouseY >= bounds.y && mouseY <= bounds.y + bounds.height;
         });
@@ -574,6 +655,16 @@ export class GameScene extends Scene {
               this.itemPlacementPreview.endFill();
             }
           });
+        } else if (this.selectedSpike && this.itemPlacementPreview) {
+          const bounds = this.selectedSpike.container.getBounds();
+          this.itemPlacementPreview.beginFill(0xff0000, 0.5);
+          this.itemPlacementPreview.drawRect(
+            bounds.x,
+            bounds.y,
+            bounds.width,
+            bounds.height
+          );
+          this.itemPlacementPreview.endFill();
         } else if (this.itemPlacementPreview) {
           this.itemPlacementPreview.beginFill(0xff0000, 0.5);
           this.itemPlacementPreview.drawCircle(mouseX, mouseY, 20);
@@ -639,12 +730,12 @@ export class GameScene extends Scene {
 
             if (platformY !== flagPlatformY || Math.abs(platformX - flagPlatformX) > 1) {
               // Not a flag platform, remove it
-              this.container.removeChild(platform.container);
-              this.platforms = this.platforms.filter(p => p !== platform);
-              this.container.removeChild(platform.container);
-              platform.destroy();
+              this.blowUpPlatform(platform);
             }
           });
+        } else if (this.selectedSpike) {
+          // Remove selected spike if any
+          this.blowUpSpike(this.selectedSpike);
         }
         break;
 
@@ -691,18 +782,18 @@ export class GameScene extends Scene {
     const playerPosition = this.playerSpawn;
     const aiPosition = this.adversaryStart;
     const flagPosition = this.flagPoint;
-    
+
     // Create an instance of ItemSelector and use it to select an item using the behavior tree
     const itemSelector = new ItemSelector(availableItems);
     return itemSelector.selectItem(
-      this.playerItem!, 
-      this.levelPlan, 
-      playerPosition, 
-      aiPosition, 
+      this.playerItem!,
+      this.levelPlan,
+      playerPosition,
+      aiPosition,
       flagPosition
     );
   }
-  
+
   /**
    * AI places its selected item
    */
@@ -772,9 +863,7 @@ export class GameScene extends Scene {
 
           // Remove the closest platform
           if (closestPlatform) {
-            this.platforms = this.platforms.filter(p => p !== closestPlatform);
-            this.container.removeChild(closestPlatform.container);
-            closestPlatform.destroy();
+            this.blowUpPlatform(closestPlatform);
           }
           break;
 
