@@ -479,7 +479,7 @@ export class GameScene extends Scene {
     setTimeout(() => {
       this.container.removeChild(aiSelectionText);
       this.gameStage = 2;
-    }, 3000);
+    }, 500);
   }
 
   /**
@@ -789,7 +789,7 @@ export class GameScene extends Scene {
       this.container.removeChild(aiActionText);
       this.gameStage = 3;
       console.log('moving game to stage 3, All placing should be complete and the game will start')
-    }, 1500);
+    }, 500);
   }
 
 }
