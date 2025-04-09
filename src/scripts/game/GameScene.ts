@@ -13,7 +13,8 @@ import { ItemType } from '../ai/ItemSelector';
 
 import { Spike } from './Spike';
 import { ItemButton } from './ItemButton';
-import { level, oldTestLevel, rlevel, pathTest } from './levels';
+import { level, oldTestLevel, rlevel } from './levels';
+import { ItemSelector } from '../ai/ItemSelector';
 
 export class GameScene extends Scene {
   camera!: Camera;
@@ -32,13 +33,13 @@ export class GameScene extends Scene {
   // 3: Item placement phase - AI places its item
   // 4: AI pathfinding to the flag
   // 5: Player's turn to move
-  gameStage: number = 5;
+  gameStage: number = 0;
   levelPlan!: string[];
   startText: PIXI.Text | null = null;
   spikes!: Spike[];
 
   // Item selection related properties
-  availableItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes];
+  availableItems! : ItemType[];
   playerItem: ItemType | null = null;
   aiItem: ItemType | null = null;
   itemSelectionUI!: PIXI.Container;
@@ -49,7 +50,7 @@ export class GameScene extends Scene {
   placementText: PIXI.Text | null = null;
 
   create() {
-    this.levelPlan = pathTest;
+    this.levelPlan = level;
     const { playerStart, AIStart, platforms, spikes, levelRect, flagPoint } = buildLevel(this.levelPlan);
     getLevelNodes(this.levelPlan, true);
 
@@ -60,7 +61,7 @@ export class GameScene extends Scene {
     this.createPlatforms(platforms);
     this.createSpikes(spikes);
     this.adversaryStart = AIStart;
-
+    this.availableItems = this.randomizeItems();
     this.createItemButtons();
 
     this.createPlayer();
@@ -198,7 +199,7 @@ export class GameScene extends Scene {
 
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
           const flag = colliders.find(body => body.id === this.flag?.body.id);
-          console.log('hi', this.spikes)
+          //console.log('hi', this.spikes)
           const spike = colliders.find(body => this.spikes.some(s => s.body.id === body.id));
 
           if (player && flag) {
@@ -278,9 +279,6 @@ export class GameScene extends Scene {
           case "s":
             App.controllerInput.drop = true;
             break;
-
-          case "r":
-            this.adversary.goToFlag(this.adversaryStart, this.flagPoint, this.levelPlan);
         }
       }
     });
@@ -410,28 +408,36 @@ export class GameScene extends Scene {
     this.createItemButtons();
   }
 
+  randomizeItems() {
+    const randomItems = [];
+    const allItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes];
+    for (let i = 0; i < allItems.length; i++) {
+      const randomIndex = Math.floor(Math.random() * allItems.length);
+      randomItems.push(allItems[randomIndex]);
+    }
+    return randomItems;
+  }
+
   createItemButtons() {
     // change this list to add more items to the selection
-    // TODO: create logic to randomize this
-    this.availableItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes];
     this.itemSelectionUI = new PIXI.Container();
 
     // Create the buttons
     for (let i = 0; i < this.availableItems.length; i++) {
       const button = new ItemButton(this.availableItems[i], i);
+      const itemValue = this.availableItems[i]; // Store the current item
+      const itemIndex = i; // Store the current index
+      
       button.bg.on('pointerdown', () => {
-        // only allow this to be hit when the game stage = 0
         if (this.gameStage === 0) {
-          console.log('Item selected:', this.availableItems[i]);
-          this.playerItem = this.availableItems[i];
-
-          // remove this item from the array of items
-          this.availableItems.splice(i, 1);
-
-          // init phase 1
+          console.log('Item selected:', itemValue);
+          this.playerItem = itemValue;
+          
+          // Remove this item from the array of items
+          this.availableItems.splice(this.availableItems.indexOf(itemValue), 1);
+          
           this.gameStage = 1;
         }
-        // else do nothing
       });
       this.itemSelectionUI.addChild(button.button);
     }
@@ -452,7 +458,8 @@ export class GameScene extends Scene {
 
     // TODO: change this to use the behavior tree
     // this.aiItem = this.adversary.selectItem(this.availableItems, this.playerItem, playerPosition);
-    this.aiItem = this.availableItems[0]
+    console.log('Available items:', this.availableItems);
+    this.aiItem = this.selectItemUsingBehaviorTree(this.availableItems);
 
     // Create info text about AI's selection
     const aiSelectionText = new PIXI.Text({
@@ -677,6 +684,25 @@ export class GameScene extends Scene {
     this.placeAIItem();
   }
 
+  /**
+   * Uses the behavior tree to select an item for the AI
+   */
+  selectItemUsingBehaviorTree(availableItems: ItemType[]): ItemType {
+    const playerPosition = this.playerSpawn;
+    const aiPosition = this.adversaryStart;
+    const flagPosition = this.flagPoint;
+    
+    // Create an instance of ItemSelector and use it to select an item using the behavior tree
+    const itemSelector = new ItemSelector(availableItems);
+    return itemSelector.selectItem(
+      this.playerItem!, 
+      this.levelPlan, 
+      playerPosition, 
+      aiPosition, 
+      flagPosition
+    );
+  }
+  
   /**
    * AI places its selected item
    */
