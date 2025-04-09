@@ -634,6 +634,15 @@ export class GameScene extends Scene {
             return false;
           }
 
+          // is left boundary
+          if (platform.gridRect.x <= 0) return false;
+          // is right boundary
+          if (platform.gridRect.x + platform.gridRect.width >= this.levelPlan[0].length) return false;
+          // is top boundary
+          if (platform.gridRect.y <= 0) return false;
+          // is bottom boundary
+          if (platform.gridRect.y + platform.gridRect.height >= this.levelPlan.length) return false;
+
           return mouseX >= bounds.x && mouseX <= bounds.x + bounds.width &&
             mouseY >= bounds.y && mouseY <= bounds.y + bounds.height;
         });
