@@ -91,7 +91,9 @@ export class ItemSelector {
             { type: ItemType.Bomb, value: this.checkBomb(maxPathNode) },
         ];
         
-        const best = weights.reduce((max, curr) => (curr.value > max.value ? curr : max));
+        // Filter weights to only include available items
+        const availableWeights = weights.filter(item => this.availableItems.includes(item.type));
+        const best = availableWeights.reduce((max, curr) => (curr.value > max.value ? curr : max));
         console.log(weights)
         console.log(best.type)
         return best.type;
@@ -246,125 +248,4 @@ export class ItemSelector {
         }
         return true
     }
-
-    /**
-     * Main decision tree logic
-     */
-    private decisionTree(gameState: GameState, remainingItems: ItemType[]): ItemType {
-        const { playerItem, platformCount, distanceToFlag, playerDistanceToFlag, criticalPaths, flagAccessibility } = gameState;
-
-        // If we can't reach the flag, prioritize creating paths
-        if (distanceToFlag > 0 && flagAccessibility < 0.3) {
-            // We need to improve our path to the flag
-            if (remainingItems.includes(ItemType.Platform)) {
-                return ItemType.Platform;
-            }
-        }
-        
-        // If player has Platform and is far from flag, consider Bomb to disrupt their path
-        if (playerItem === ItemType.Platform && playerDistanceToFlag > distanceToFlag) {
-            if (remainingItems.includes(ItemType.Bomb)) {
-                return ItemType.Bomb;
-            }
-
-            if (remainingItems.includes(ItemType.Spikes)){
-                return ItemType.Spikes
-            }
-
-            return ItemType.Platform
-        }
-        
-        // If player has Bomb and there are few platforms, pick Platform
-        if (playerItem === ItemType.Bomb && platformCount < 20 && remainingItems.includes(ItemType.Platform)) {
-            return ItemType.Platform;
-        }
-
-        if (playerItem === ItemType.Bomb && platformCount < 20 && !remainingItems.includes(ItemType.Platform)) {
-            return ItemType.Spikes;
-        }
-
-        if (playerItem === ItemType.Bomb && platformCount < 20 && !remainingItems.includes(ItemType.Platform) && !remainingItems.includes(ItemType.Spikes)) {
-            return ItemType.Bomb;
-        }
-        
-        // If player has Spikes and we're struggling to reach the flag, pick Platform
-        if (playerItem === ItemType.Spikes && distanceToFlag > 10 && remainingItems.includes(ItemType.Platform)) {
-            return ItemType.Platform;
-        }
-
-        if (playerItem === ItemType.Spikes && distanceToFlag > 10 && !remainingItems.includes(ItemType.Platform)) {
-            return ItemType.Spikes;
-        }
-
-        if (playerItem === ItemType.Spikes && distanceToFlag > 10 && !remainingItems.includes(ItemType.Platform) && !remainingItems.includes(ItemType.Spikes)) {
-            return ItemType.Bomb;
-        }
-        
-        // If player has Platform and there are already many platforms, use Bomb
-        if (playerItem === ItemType.Platform && platformCount > 25 && remainingItems.includes(ItemType.Bomb)) {
-            return ItemType.Bomb;
-        }
-        
-        if (playerItem === ItemType.Platform && platformCount > 25 && !remainingItems.includes(ItemType.Bomb)) {
-            return ItemType.Spikes;
-        }
-        
-        if (playerItem === ItemType.Platform && platformCount > 25 && !remainingItems.includes(ItemType.Bomb) && !remainingItems.includes(ItemType.Spikes)) {
-            return ItemType.Platform;
-        }
-        
-        // If player is closer to flag than AI, consider Spikes to slow them down
-        if (playerDistanceToFlag < distanceToFlag && remainingItems.includes(ItemType.Spikes)) {
-            return ItemType.Spikes;
-        }
-
-        if (playerDistanceToFlag < distanceToFlag && !remainingItems.includes(ItemType.Spikes)) {
-            return ItemType.Platform;
-        }
-
-        if (playerDistanceToFlag < distanceToFlag && !remainingItems.includes(ItemType.Spikes) && !remainingItems.includes(ItemType.Platform)) {
-            return ItemType.Bomb;
-        }
-        
-        // If player has Bomb and there are critical paths, choose Spikes for defense
-        if (playerItem === ItemType.Bomb && criticalPaths > 0 && remainingItems.includes(ItemType.Spikes)) {
-            return ItemType.Spikes;
-        }
-
-        if (playerItem === ItemType.Bomb && criticalPaths > 0 && !remainingItems.includes(ItemType.Spikes)) {
-            return ItemType.Bomb;
-        }
-
-        if (playerItem === ItemType.Bomb && criticalPaths > 0 && !remainingItems.includes(ItemType.Spikes) && !remainingItems.includes(ItemType.Bomb)) {
-            return ItemType.Platform;
-        }
-        
-        // If player has Spikes and is far from flag, pick Bomb to disrupt potential platforms
-        if (playerItem === ItemType.Spikes && playerDistanceToFlag > 15 && remainingItems.includes(ItemType.Bomb)) {
-            return ItemType.Bomb;
-        }
-
-        if (playerItem === ItemType.Spikes && playerDistanceToFlag > 15 && !remainingItems.includes(ItemType.Bomb)) {   
-            return ItemType.Spikes;
-        }
-
-        if (playerItem === ItemType.Spikes && playerDistanceToFlag > 15 && !remainingItems.includes(ItemType.Bomb) && !remainingItems.includes(ItemType.Spikes)) {  
-            return ItemType.Platform;
-        }
-        
-        // Default strategy based on flag accessibility
-        if (flagAccessibility < 0.5) {
-            // Flag is hard to reach, prioritize creating paths
-            if (remainingItems.includes(ItemType.Platform)) return ItemType.Platform;
-            if (remainingItems.includes(ItemType.Bomb)) return ItemType.Bomb;
-        } else {
-            // Flag is easier to reach, prioritize defensive options
-            if (remainingItems.includes(ItemType.Spikes)) return ItemType.Spikes;
-            if (remainingItems.includes(ItemType.Bomb)) return ItemType.Bomb;
-        }
-        
-        // If we reach here, just pick the first remaining item
-        return remainingItems[0];
-    }
-
   }
