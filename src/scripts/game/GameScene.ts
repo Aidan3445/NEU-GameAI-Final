@@ -14,8 +14,8 @@ import { ItemType } from '../ai/ItemSelector';
 import { Spike } from './Spike';
 import { ItemButton } from './ItemButton';
 // import { PixiPlugin } from 'gsap/all';
-import { level, oldTestLevel, rlevel } from './levels';
- 
+import { level, oldTestLevel, rlevel, pathTest } from './levels';
+
 export class GameScene extends Scene {
   camera!: Camera;
   player!: Player;
@@ -33,7 +33,7 @@ export class GameScene extends Scene {
   // 3: Item placement phase - AI places its item
   // 4: AI pathfinding to the flag
   // 5: Player's turn to move
-  gameStage: number = 0;
+  gameStage: number = 5;
   levelPlan!: string[];
   startText: PIXI.Text | null = null;
   spikes!: Spike[];
@@ -50,7 +50,7 @@ export class GameScene extends Scene {
   placementText: PIXI.Text | null = null;
 
   create() {
-    this.levelPlan = level;
+    this.levelPlan = pathTest;
     const { playerStart, AIStart, platforms, spikes, levelRect, flagPoint } = buildLevel(this.levelPlan);
     getLevelNodes(this.levelPlan, true);
 
@@ -176,12 +176,16 @@ export class GameScene extends Scene {
             }
           }
 
-          if (this.player.body.speed > App.config.playerMaxSpeed) {
-            Matter.Body.setVelocity(this.player.body, {
-              x: App.config.playerMaxSpeed * Math.sign(this.player.velocity.x),
-              y: Math.min(this.player.velocity.y, App.config.playerMaxFallSpeed)
-            });
-          }
+          const entities = [this.player.body, this.adversary.body];
+
+          entities.forEach((entity) => {
+            if (entity.speed > App.config.playerMaxSpeed) {
+              Matter.Body.setVelocity(entity, {
+                x: App.config.playerMaxSpeed * Math.sign(entity.velocity.x),
+                y: Math.min(entity.velocity.y, App.config.playerMaxFallSpeed)
+              });
+            }
+          });
         }
       });
 
@@ -206,8 +210,9 @@ export class GameScene extends Scene {
           // if (player && platform) {
           //   console.log(player.position.x, player.position.y, pair, platform.position.x, platform.position.y);
           // }
-          
-          if (player && platform && (pair.collision.normal.y === 0 || player.position.y < platform.position.y)) {
+
+          if (player && platform && (pair.collision.normal.y === 0 ||
+            player.position.y < platform.position.y)) {
             console.log('player landing')
             this.player.land(pair.collision.normal);
             App.controllerInput.drop = false;
@@ -216,11 +221,11 @@ export class GameScene extends Scene {
           if (adversary && flag) {
             console.log("Adversary won!");
             this.resetGame();
-          } 
- 
-          if (adversary && platform) {
+          }
+
+          if (adversary && platform && (pair.collision.normal.y === 0 ||
+            adversary.position.y < platform.position.y)) {
             this.adversary.land();
-            App.controllerInput.drop = false;
           }
 
           if (player && spike) {
@@ -242,7 +247,7 @@ export class GameScene extends Scene {
 
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
           const spike = colliders.find(body => this.spikes.some(s => s.body.id === body.id));
-          
+
           if (player && platform) {
             // add delay for more forgiving platforming
             setTimeout(() => this.player.leftPlatform(pair.collision.normal), 100);
@@ -250,7 +255,7 @@ export class GameScene extends Scene {
 
         });
       });
-  } 
+  }
 
   keyEvents() {
     window.addEventListener("keydown", (event) => {
@@ -274,6 +279,9 @@ export class GameScene extends Scene {
           case "s":
             App.controllerInput.drop = true;
             break;
+
+          case "r":
+            this.adversary.goToFlag(this.adversaryStart, this.flagPoint, this.levelPlan);
         }
       }
     });
@@ -312,7 +320,7 @@ export class GameScene extends Scene {
       }
     });
   }
-  
+
 
   update(dt: PIXI.Ticker) {
     // console.log(this.itemSelectionUI)
@@ -390,7 +398,7 @@ export class GameScene extends Scene {
     this.playerItem = null;
     this.aiItem = null;
     this.disablePlayerMovement();
-    
+
     // Reset adversary
     if (this.adversary) {
       this.adversary.destroy();
@@ -398,7 +406,7 @@ export class GameScene extends Scene {
 
     // Create a new adversary
     this.createAdversary(this.adversaryStart);
-    
+
     // Start item selection again
     this.createItemButtons();
   }
@@ -427,11 +435,11 @@ export class GameScene extends Scene {
         // else do nothing
       });
       this.itemSelectionUI.addChild(button.button);
+    }
+
+    this.container.addChild(this.itemSelectionUI);
   }
 
-  this.container.addChild(this.itemSelectionUI);
-}
-  
   /**
    * AI selects an item using the behavior tree
    */
@@ -442,7 +450,7 @@ export class GameScene extends Scene {
     //   this.player.body.position.x / App.config.tileSize,
     //   this.player.body.position.y / App.config.tileSize
     // );
-    
+
     // TODO: change this to use the behavior tree
     // this.aiItem = this.adversary.selectItem(this.availableItems, this.playerItem, playerPosition);
     this.aiItem = this.availableItems[0]
@@ -460,20 +468,20 @@ export class GameScene extends Scene {
     aiSelectionText.anchor.set(0.5);
     aiSelectionText.position.set((window.innerWidth / 2) + 1000, window.innerHeight / 2 - 100);
     this.container.addChild(aiSelectionText);
-    
+
     // Display for 3 seconds then move to item placement phase
     setTimeout(() => {
       this.container.removeChild(aiSelectionText);
       this.gameStage = 2;
     }, 3000);
   }
-  
+
   /**
    * Start the item placement phase for the player
    */
   startItemPlacement() {
     this.gameStage = 0;
-    
+
     // Show instructions
     const placementText = new PIXI.Text({
       text: `Click to place your ${this.playerItem}`,
@@ -487,74 +495,74 @@ export class GameScene extends Scene {
     placementText.anchor.set(0.5);
     placementText.position.set((window.innerWidth / 2) + 1000, 50);
     this.container.addChild(placementText);
-    
+
     // Create preview graphics
     this.itemPlacementPreview = new PIXI.Graphics();
     this.container.addChild(this.itemPlacementPreview);
     this.itemPlacementPreview.zIndex = 150;
-    
+
     // Enable placement mode
     this.itemPlacementActive = true;
-    
+
     // Remove any existing event listeners first to prevent duplicates
     window.removeEventListener("mousemove", this.onItemPlacementMouseMove);
     window.removeEventListener("click", this.onItemPlacementClick);
-    
+
     // Setup mouse move and click events
     window.addEventListener("mousemove", this.onItemPlacementMouseMove);
     window.addEventListener("click", this.onItemPlacementClick);
-    
+
     // Store references to event listeners
     this.placementText = placementText;
-    
+
     console.log("Item placement started for item:", this.playerItem);
   }
-  
+
   /**
    * Handle mouse movement during item placement
    */
   onItemPlacementMouseMove = (event: MouseEvent) => {
     if (!this.itemPlacementActive || !this.itemPlacementPreview || !this.playerItem) return;
-    
+
     // Convert mouse position to world coordinates
     const mouseX = event.clientX;
     const mouseY = event.clientY;
-    
+
     // Calculate grid position (snap to grid)
     const gridX = Math.floor(mouseX / App.config.tileSize) * App.config.tileSize;
     const gridY = Math.floor(mouseY / App.config.tileSize) * App.config.tileSize;
-    
+
     // Update preview based on selected item
     this.itemPlacementPreview.clear();
     switch (this.playerItem) {
       case ItemType.Platform:
         this.itemPlacementPreview.beginFill(0x995533, 0.7);
         this.itemPlacementPreview.drawRect(
-          gridX, 
-          gridY, 
-          App.config.tileSize * 3, 
+          gridX,
+          gridY,
+          App.config.tileSize * 3,
           App.config.tileSize
         );
         this.itemPlacementPreview.endFill();
         break;
-        
+
       case ItemType.Bomb:
         // Highlight platforms under cursor
         this.selectedPlatforms = this.platforms.filter(platform => {
           const bounds = platform.container.getBounds();
           return mouseX >= bounds.x && mouseX <= bounds.x + bounds.width &&
-                 mouseY >= bounds.y && mouseY <= bounds.y + bounds.height;
+            mouseY >= bounds.y && mouseY <= bounds.y + bounds.height;
         });
-        
+
         if (this.selectedPlatforms.length > 0) {
           this.selectedPlatforms.forEach(platform => {
             if (this.itemPlacementPreview) {
               const bounds = platform.container.getBounds();
               this.itemPlacementPreview.beginFill(0xff0000, 0.5);
               this.itemPlacementPreview.drawRect(
-                bounds.x, 
-                bounds.y, 
-                bounds.width, 
+                bounds.x,
+                bounds.y,
+                bounds.width,
                 bounds.height
               );
               this.itemPlacementPreview.endFill();
@@ -566,19 +574,19 @@ export class GameScene extends Scene {
           this.itemPlacementPreview.endFill();
         }
         break;
-        
+
       case ItemType.Spikes:
         this.itemPlacementPreview.beginFill(0xaaaaaa, 0.7);
         for (let i = 0; i < 3; i++) {
-          this.itemPlacementPreview.moveTo(gridX + i * (App.config.tileSize/3), gridY + App.config.tileSize);
-          this.itemPlacementPreview.lineTo(gridX + (i + 0.5) * (App.config.tileSize/3), gridY);
-          this.itemPlacementPreview.lineTo(gridX + (i + 1) * (App.config.tileSize/3), gridY + App.config.tileSize);
+          this.itemPlacementPreview.moveTo(gridX + i * (App.config.tileSize / 3), gridY + App.config.tileSize);
+          this.itemPlacementPreview.lineTo(gridX + (i + 0.5) * (App.config.tileSize / 3), gridY);
+          this.itemPlacementPreview.lineTo(gridX + (i + 1) * (App.config.tileSize / 3), gridY + App.config.tileSize);
         }
         this.itemPlacementPreview.endFill();
         break;
     }
   }
-  
+
   /**
    * Handle mouse click during item placement
    */
@@ -587,19 +595,19 @@ export class GameScene extends Scene {
       console.log("Item placement not active or no item selected");
       return;
     }
-    
+
     console.log("Item placement click detected for item:", this.playerItem);
-    
+
     // Convert mouse position to world coordinates
     const mouseX = event.clientX;
     const mouseY = event.clientY;
-    
+
     // Calculate grid position (snap to grid)
     const gridX = Math.floor(mouseX / App.config.tileSize);
     const gridY = Math.floor(mouseY / App.config.tileSize);
-    
+
     console.log("Placing at grid position:", gridX, gridY);
-    
+
     // Apply the item effect based on type
     switch (this.playerItem) {
       case ItemType.Platform:
@@ -612,7 +620,7 @@ export class GameScene extends Scene {
         const platform = new Platform(rect)
         this.addPlatform(platform)
         break;
-        
+
       case ItemType.Bomb:
         // Remove selected platform if any (except flag platform)
         if (this.selectedPlatforms.length > 0) {
@@ -622,7 +630,7 @@ export class GameScene extends Scene {
             const flagPlatformX = Math.floor(this.flagPoint.x);
             const platformY = Math.floor(platform.body.position.y / App.config.tileSize);
             const platformX = Math.floor(platform.body.position.x / App.config.tileSize);
-            
+
             if (platformY !== flagPlatformY || Math.abs(platformX - flagPlatformX) > 1) {
               // Not a flag platform, remove it
               this.container.removeChild(platform.container);
@@ -633,18 +641,18 @@ export class GameScene extends Scene {
           });
         }
         break;
-        
+
       case ItemType.Spikes:
         console.log("Creating spikes at", gridX, gridY);
         const spike = new Spike(new PIXI.Point(gridX, gridY));
         this.addSpike(spike);
         break;
     }
-    
+
     // Cleanup and move to AI placement
     this.finishItemPlacement();
   }
-  
+
   /**
    * Clean up after item placement is done
    */
@@ -652,30 +660,30 @@ export class GameScene extends Scene {
     // Remove event listeners
     window.removeEventListener("mousemove", this.onItemPlacementMouseMove);
     window.removeEventListener("click", this.onItemPlacementClick);
-    
+
     // Clean up UI
     if (this.itemPlacementPreview) {
       this.container.removeChild(this.itemPlacementPreview);
       this.itemPlacementPreview = null;
     }
-    
+
     if (this.placementText) {
       this.container.removeChild(this.placementText);
       this.placementText = null;
     }
-    
+
     this.itemPlacementActive = false;
     this.selectedPlatforms = [];
 
     this.placeAIItem();
   }
-  
+
   /**
    * AI places its selected item
    */
   placeAIItem() {
     if (!this.aiItem) return;
-    
+
     // Show message about AI's action
     const aiActionText = new PIXI.Text({
       text: `AI is placing its ${this.aiItem}...`,
@@ -689,7 +697,7 @@ export class GameScene extends Scene {
     aiActionText.anchor.set(0.5);
     aiActionText.position.set(window.innerWidth / 2, 50);
     this.container.addChild(aiActionText);
-    
+
     // Determine where AI should place its item
 
     // TODO: revamp determineItemPlacement
@@ -697,7 +705,7 @@ export class GameScene extends Scene {
     const placementPosition = new PIXI.Point(500, 500)
     const gridX = Math.floor(placementPosition.x);
     const gridY = Math.floor(placementPosition.y);
-    
+
     // Wait a bit for dramatic effect, then place the item
     setTimeout(() => {
       switch (this.aiItem) {
@@ -714,29 +722,29 @@ export class GameScene extends Scene {
           // Find closest platform to the target position
           let closestPlatform = null;
           let minDistance = Infinity;
-          
+
           for (const platform of this.platforms) {
             const platformX = Math.floor(platform.body.position.x / App.config.tileSize);
             const platformY = Math.floor(platform.body.position.y / App.config.tileSize);
-            
+
             // Check if it's the flag platform
             const flagPlatformY = Math.floor(this.flagPoint.y) + 1;
             const flagPlatformX = Math.floor(this.flagPoint.x);
-            
+
             if (platformY !== flagPlatformY || Math.abs(platformX - flagPlatformX) > 1) {
               // Not a flag platform, can be removed
               const dist = Math.sqrt(
-                Math.pow(platformX - gridX, 2) + 
+                Math.pow(platformX - gridX, 2) +
                 Math.pow(platformY - gridY, 2)
               );
-              
+
               if (dist < minDistance) {
                 minDistance = dist;
                 closestPlatform = platform;
               }
             }
           }
-          
+
           // Remove the closest platform
           if (closestPlatform) {
             this.platforms = this.platforms.filter(p => p !== closestPlatform);
@@ -744,20 +752,20 @@ export class GameScene extends Scene {
             closestPlatform.destroy();
           }
           break;
-          
+
         case ItemType.Spikes:
           console.log("AI creating spikes at", gridX, gridY);
           const spike = new Spike(new PIXI.Point(gridX, gridY));
           this.addSpike(spike)
           break;
       }
-      
+
       // Clean up and move to pathfinding phase
       this.container.removeChild(aiActionText);
       this.gameStage = 3;
       console.log('moving game to stage 3, All placing should be complete and the game will start')
     }, 1500);
   }
-  
+
 }
 
