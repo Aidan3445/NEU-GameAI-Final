@@ -79,15 +79,22 @@ export class ItemSelector {
             }
         }
 
-        // // platfrom check
         const sumPlatformWeights = this.checkPlatform(maxPathNode, lastPathNode);
 
         const sumSpikeWeights = this.checkSpike(maxPathNode);
 
         const sumBombWeights = this.checkBomb(maxPathNode);
 
-        console.log('sumPathWeights', sumPathWeights, 'sumBombWeights', sumBombWeights, 'sumSpikeWeights', sumSpikeWeights, 'sumPlatformWeights', sumPlatformWeights)
-        return this.availableItems[0]
+        const weights = [
+            { type: ItemType.Platform, value: this.checkPlatform(maxPathNode, lastPathNode) },
+            { type: ItemType.Spikes, value: this.checkSpike(maxPathNode) },
+            { type: ItemType.Bomb, value: this.checkBomb(maxPathNode) },
+        ];
+        
+        const best = weights.reduce((max, curr) => (curr.value > max.value ? curr : max));
+        console.log(weights)
+        console.log(best.type)
+        return best.type;
     }
 
     checkPlatform(node : Node, lastNode : Node) {
@@ -128,8 +135,8 @@ export class ItemSelector {
 
     const C = y1;
 
-    const x = -B/(2*A )+ x1
-    const y = J + y1
+    const x = -B/(2*A) + x1
+    const y = y1 - J
 
     const point = new PIXI.Point(Math.floor(x), Math.floor(y)) 
     
@@ -210,6 +217,7 @@ export class ItemSelector {
 
     updateLevelPlan(cell: PIXI.Point, newChar: string, length: number, levelPlanCopy: String[]) {
         // console.log('updating level plan', cell, newChar, length, this.levelPlan);
+        console.log(levelPlanCopy.length)
         levelPlanCopy[cell.y] = levelPlanCopy[cell.y].substring(0, cell.x) +
         newChar.repeat(length) +
         levelPlanCopy[cell.y].substring(cell.x + length);
