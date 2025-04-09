@@ -79,12 +79,6 @@ export class ItemSelector {
             }
         }
 
-        const sumPlatformWeights = this.checkPlatform(maxPathNode, lastPathNode);
-
-        const sumSpikeWeights = this.checkSpike(maxPathNode);
-
-        const sumBombWeights = this.checkBomb(maxPathNode);
-
         const weights = [
             { type: ItemType.Platform, value: this.checkPlatform(maxPathNode, lastPathNode) },
             { type: ItemType.Spikes, value: this.checkSpike(maxPathNode) },
