@@ -40,7 +40,7 @@ export class GameScene extends Scene {
   spikes!: Spike[];
 
   // Item selection related properties
-  availableItems = [ItemType.Platform, ItemType.Bomb, ItemType.Spikes];
+  availableItems! : ItemType[];
   playerItem: ItemType | null = null;
   aiItem: ItemType | null = null;
   itemSelectionUI!: PIXI.Container;
@@ -62,7 +62,7 @@ export class GameScene extends Scene {
     this.createPlatforms(platforms);
     this.createSpikes(spikes);
     this.adversaryStart = AIStart;
-
+    this.availableItems = this.randomizeItems();
     this.createItemButtons();
 
     this.createPlayer();
@@ -196,7 +196,7 @@ export class GameScene extends Scene {
 
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
           const flag = colliders.find(body => body.id === this.flag?.body.id);
-          console.log('hi', this.spikes)
+          //console.log('hi', this.spikes)
           const spike = colliders.find(body => this.spikes.some(s => s.body.id === body.id));
 
           if (player && flag) {
@@ -416,7 +416,6 @@ export class GameScene extends Scene {
 
   createItemButtons() {
     // change this list to add more items to the selection
-    this.availableItems = this.randomizeItems();
     this.itemSelectionUI = new PIXI.Container();
 
     // Create the buttons
@@ -455,6 +454,7 @@ export class GameScene extends Scene {
     
     // TODO: change this to use the behavior tree
     // this.aiItem = this.adversary.selectItem(this.availableItems, this.playerItem, playerPosition);
+    console.log('Available items:', this.availableItems);
     this.aiItem = this.selectItemUsingBehaviorTree(this.availableItems);
 
     // Create info text about AI's selection

@@ -36,7 +36,7 @@ export class ItemSelector {
         // Simple distance calculation (can be improved with actual pathfinding)
         const distanceToFlag = Math.abs(aiPos.x - flagPos.x) + Math.abs(aiPos.y - flagPos.y);
         const playerDistanceToFlag = Math.abs(playerPos.x - flagPos.x) + Math.abs(playerPos.y - flagPos.y);
-        
+
         // Determine critical paths by checking for narrow passages
         let criticalPaths = 0;
         for (let y = 0; y < levelPlan.length; y++) {
@@ -109,9 +109,9 @@ export class ItemSelector {
      */
     selectItem(playerItem: ItemType, levelPlan: string[], playerPos: PIXI.Point, aiPos: PIXI.Point, flagPos: PIXI.Point): ItemType {
         // Get remaining items
-        const remainingItems = this.availableItems.filter(
-            item => item !== playerItem
-        );
+        const remainingItems = this.availableItems;
+        console.log('Remaining items:', remainingItems);
+        
         
         // Analyze current game state
         const gameState = this.analyzeGameState(levelPlan, playerPos, aiPos, flagPos);
@@ -126,7 +126,7 @@ export class ItemSelector {
      */
     private decisionTree(gameState: GameState, remainingItems: ItemType[]): ItemType {
         const { playerItem, platformCount, distanceToFlag, playerDistanceToFlag, criticalPaths, flagAccessibility } = gameState;
-        
+
         // If we can't reach the flag, prioritize creating paths
         if (distanceToFlag > 0 && flagAccessibility < 0.3) {
             // We need to improve our path to the flag
