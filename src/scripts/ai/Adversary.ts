@@ -100,9 +100,9 @@ export class Adversary {
       this.visualizePath();
     }
 
-    for (let i = 0; i < path.length; i++) {
-      console.log(path[i].point.x * App.config.tileSize, path[i].point.y * App.config.tileSize, pathWeights[i]);
-    }
+    // for (let i = 0; i < path.length; i++) {
+    //   console.log(path[i].point.x * App.config.tileSize, path[i].point.y * App.config.tileSize, pathWeights[i]);
+    // }
     // console.log('pathWeight', pathWeights)
     // console.log('path', path)
     return { path: this.path, pathWeights: pathWeights }

@@ -13,7 +13,7 @@ import { ItemType } from '../ai/ItemSelector';
 
 import { Spike } from './Spike';
 import { ItemButton } from './ItemButton';
-import { level, oldTestLevel, rlevel } from './levels';
+import { level, oldTestLevel, rlevel, pathTest } from './levels';
 import { ItemSelector } from '../ai/ItemSelector';
 
 export class GameScene extends Scene {
@@ -51,7 +51,7 @@ export class GameScene extends Scene {
   placementText: PIXI.Text | null = null;
 
   create() {
-    this.levelPlan = level;
+    this.levelPlan = pathTest;
     const { playerStart, AIStart, platforms, spikes, levelRect, flagPoint } = buildLevel(this.levelPlan);
     getLevelNodes(this.levelPlan, true);
 
@@ -69,7 +69,7 @@ export class GameScene extends Scene {
 
     this.createAdversary(AIStart);
     this.availableItems = this.randomizeItems();
-    
+
     this.createItemButtons();
 
     this.physicsEvents();
@@ -179,7 +179,7 @@ export class GameScene extends Scene {
   }
 
   updateLevelPlan(cell: PIXI.Point, newChar: string, length: number) {
-    console.log('updating level plan', cell, newChar, length, this.levelPlan);
+    // console.log('updating level plan', cell, newChar, length, this.levelPlan);
     this.levelPlan[cell.y] = this.levelPlan[cell.y].substring(0, cell.x) +
       newChar.repeat(length) +
       this.levelPlan[cell.y].substring(cell.x + 1 + length);
@@ -786,18 +786,10 @@ export class GameScene extends Scene {
    * Uses the behavior tree to select an item for the AI
    */
   selectItemUsingBehaviorTree(availableItems: ItemType[]): ItemType {
-    const playerPosition = this.playerSpawn;
-    const flagPosition = this.flagPoint;
-    const adversary = this.adversary;
-    
     // Create an instance of ItemSelector and use it to select an item using the behavior tree
-    const itemSelector = new ItemSelector(availableItems);
+    const itemSelector = new ItemSelector(this.playerSpawn, availableItems, this.adversary, this.platforms, this.levelPlan, this.adversaryStart, this.flagPoint);
     return itemSelector.selectItem(
-      this.playerItem!, 
-      this.levelPlan, 
-      playerPosition, 
-      flagPosition,
-      adversary
+      this.playerItem!,
     );
   }
 
