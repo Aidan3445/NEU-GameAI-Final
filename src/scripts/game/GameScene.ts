@@ -498,6 +498,7 @@ export class GameScene extends Scene {
   }
 
   createItemButtons() {
+    this.availableItems = this.randomizeItems();
     // change this list to add more items to the selection
     this.itemSelectionUI = new PIXI.Container();
 
