@@ -2,8 +2,7 @@ import * as PIXI from "pixi.js";
 import { App } from "../system/App";
 import Matter from "matter-js";
 import { getLevelNodes, getNodeKey, estimateArc, clearLine } from "../ai/preprocess";
-import { level, oldTestLevel, rlevel } from './levels';
- 
+
 export class Player {
   container: PIXI.Container;
   sprite!: PIXI.Sprite;
@@ -146,7 +145,7 @@ export class Player {
     }
   }
 
-  update() {
+  update(level: string[]) {
     // console.log(this.contacts, this.canJump)
     this.sprite.position = this.body.position;
     this.sprite.rotation = this.body.angle;
@@ -154,7 +153,7 @@ export class Player {
     this.debugText.text = `${this.body.position.x.toFixed(2)}, ${this.body.position.y.toFixed(2)}`;
 
     this.debugTrail();
-    this.debugNeighbors();
+    this.debugNeighbors(level);
   }
 
   destroy() {
@@ -227,7 +226,7 @@ export class Player {
     }, 100);
   }
 
-  debugNeighbors() {
+  debugNeighbors(level: string[]) {
     // remove current neighbor rects
     this.neighborRects.forEach((rect) => {
       this.backgroundContainer.removeChild(rect);

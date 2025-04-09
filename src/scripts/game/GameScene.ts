@@ -13,7 +13,6 @@ import { ItemType } from '../ai/ItemSelector';
 
 import { Spike } from './Spike';
 import { ItemButton } from './ItemButton';
-// import { PixiPlugin } from 'gsap/all';
 import { level, oldTestLevel, rlevel, pathTest } from './levels';
 
 export class GameScene extends Scene {
@@ -378,7 +377,7 @@ export class GameScene extends Scene {
     });
 
     // this.camera.apply(this.player.body);
-    this.player.update();
+    this.player.update(this.levelPlan);
 
     // this.camera.apply(this.flag.body);
     this.flag.update();
