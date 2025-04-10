@@ -28,6 +28,9 @@ export class GameScene extends Scene {
   gameStarted: boolean = false;
   adversaryStart!: PIXI.Point;
 
+  adversaryPoints!: number;
+  playerPoints!: number;
+
   // Game stages
   // 0: Item selection phase - player selects an item
   // 1: Item selection phase - AI selects an item
@@ -57,6 +60,9 @@ export class GameScene extends Scene {
     const { playerStart, AIStart, platforms, spikes, levelRect, flagPoint } = buildLevel(this.levelPlan);
     getLevelNodes(this.levelPlan, true);
 
+    this.adversaryPoints = 0;
+    this.playerPoints = 0;
+
     this.createCamera(levelRect);
     this.flagPoint = flagPoint;
     this.playerSpawn = playerStart;
@@ -77,6 +83,7 @@ export class GameScene extends Scene {
     this.keyEvents();
 
     this.spawn();
+
   }
 
   createCamera(levelRect: PIXI.Rectangle) {
@@ -270,11 +277,13 @@ export class GameScene extends Scene {
 
           if (player && flag) {
             console.log("Player won!");
+            this.playerPoints += 1;
             this.disablePlayerMovement();
+            this.resetGame()
 
-            setTimeout(() => {
-              this.resetGame();
-            }, 1000);
+            // setTimeout(() => {
+            //   this.resetGame();
+            // }, 1000);
           }
 
           // if (player && platform) {
@@ -289,11 +298,13 @@ export class GameScene extends Scene {
 
           if (adversary && flag) {
             console.log("Adversary won!");
+            this.adversaryPoints += 1;
             this.disablePlayerMovement();
-
-            setTimeout(() => {
-              this.resetGame();
-            }, 1000);
+            this.resetGame()
+            // setTimeout(() => {
+            //   this.resetGame();
+            // }, 1000);
+            
           }
 
           if (adversary && platform && (pair.collision.normal.y === 0 ||
@@ -463,6 +474,16 @@ export class GameScene extends Scene {
   }
 
   resetGame() {
+    let text;
+    if (this.adversaryPoints > this.playerPoints) {
+      text = `adversary is winning! \n Adversary: ${this.adversaryPoints}\n Player: ${this.playerPoints}`;
+    } else if (this.adversaryPoints < this.playerPoints) {
+      text = `Player is winning! \n Adversary: ${this.adversaryPoints}\n Player: ${this.playerPoints}`;
+    } else {
+      text = `Player and adversary are tied! \n Adversary: ${this.adversaryPoints}\n Player: ${this.playerPoints}`;
+    }
+    this.screenLog(5000, text);
+
     // Reset player position
     this.spawn();
 
@@ -538,26 +559,7 @@ export class GameScene extends Scene {
     this.aiItem = this.selectItemUsingBehaviorTree(this.availableItems);
 
     console.log('AI selected', this.aiItem)
-
-    // Create info text about AI's selection
-    const aiSelectionText = new PIXI.Text({
-      text: `AI selected: ${this.aiItem}, waiting 3 seconds...`,
-      style: {
-        fontFamily: "Arial",
-        fontSize: 24,
-        fill: 0xffffff,
-        align: "center"
-      }
-    });
-    aiSelectionText.anchor.set(0.5);
-    aiSelectionText.position.set((window.innerWidth / 2), window.innerHeight / 2 - 100);
-    this.container.addChild(aiSelectionText);
-
-    // Display for 3 seconds then move to item placement phase
-    setTimeout(() => {
-      this.container.removeChild(aiSelectionText);
-      this.gameStage = 2;
-    }, 3000);
+    this.screenLog(3000, `AI selected: ${this.aiItem}, waiting 3 seconds...`)
   }
 
   /**
@@ -577,7 +579,7 @@ export class GameScene extends Scene {
       }
     });
     placementText.anchor.set(0.5);
-    placementText.position.set((window.innerWidth / 2) + 1000, 50);
+    placementText.position.set((window.innerWidth / 2), 50);
     this.container.addChild(placementText);
 
     // Create preview graphics
@@ -852,17 +854,15 @@ export class GameScene extends Scene {
     }
 
     // Wait a bit for dramatic effect, then place the item
-    console.log('hi1')
     setTimeout(() => {
-      console.log('hi2')
       switch (this.aiItem) {
         case ItemType.Platform:
-            let platformPoint = new PIXI.Point(0,0)
+            let platformPoint = new PIXI.Point(this.flagPoint.x-7,this.flagPoint.y)
 
             if (!node) {
             const possiblePoint = this.makePathToGoalPossible();
             if (!possiblePoint) {
-              console.error("No valid platform point found");
+              console.log("No valid path found, resetting game");
             } else {
               platformPoint = possiblePoint;
             }
@@ -870,7 +870,7 @@ export class GameScene extends Scene {
           } else {
             platformPoint = getVertex(lastNode.point.x, lastNode.point.y, node.point.x, node.point.y)
           }
-          
+
           console.log("AI creating platform at", platformPoint.x, platformPoint.y);
           // TODO same as the player Platform, have this Platform type take in a W and a H
           const rectW = 3
@@ -925,12 +925,15 @@ export class GameScene extends Scene {
           break;
       }
 
-      console.log('hi2')
       // Clean up and move to pathfinding phase
       this.container.removeChild(aiActionText);
       this.gameStage = 3;
       console.log('moving game to stage 3, All placing should be complete and the game will start')
-    }, 1500);
+    }, 500);
+
+    // setTimeout(() => {
+    //   this.gameStage = 3;
+    // }, 3000);
   }
 
   getItemPlacement() {
@@ -967,5 +970,27 @@ export class GameScene extends Scene {
       }
     }
     return null
+  }
+
+  screenLog(time: number, text: string) {
+    // Create info text about AI's selection
+    const aiSelectionText = new PIXI.Text({
+      text: text,
+      style: {
+        fontFamily: "Arial",
+        fontSize: 24,
+        fill: 0xffffff,
+        align: "center"
+      }
+    });
+    aiSelectionText.anchor.set(0.5);
+    aiSelectionText.position.set((window.innerWidth / 2), window.innerHeight / 2);
+    this.container.addChild(aiSelectionText);
+
+    // Display for 3 seconds then move to item placement phase
+    setTimeout(() => {
+      this.container.removeChild(aiSelectionText);
+      this.gameStage = 2;
+    }, time);
   }
 }
