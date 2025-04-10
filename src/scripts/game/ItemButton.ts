@@ -7,7 +7,7 @@ export class ItemButton {
 
   constructor(item: ItemType, i: number) {
     this.button = new PIXI.Container();
-    this.button.x = (window.innerWidth / 2 - 250 + i * 250);
+    this.button.x = (window.innerWidth / 2 - 400 + i * 250);
     this.button.y = 150;
     this.bg = new PIXI.Graphics();
     this.bg.beginFill(0x333333);
