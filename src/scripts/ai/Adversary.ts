@@ -192,7 +192,6 @@ export class Adversary {
     const pathWeights = [];
 
     while (current) {
-      console.log('hi');
       path.unshift(current);
       const parent: Node | null = current.parent;
       if (!parent) {

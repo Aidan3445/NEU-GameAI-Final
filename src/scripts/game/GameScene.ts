@@ -16,6 +16,8 @@ import { ItemButton } from './ItemButton';
 import { GameLevel, level, oldTestLevel, rlevel, pathTest } from './levels';
 import { ItemSelector } from '../ai/ItemSelector';
 
+import { getVertex } from '../ai/ItemSelector';
+
 export class GameScene extends Scene {
   camera!: Camera;
   player!: Player;
@@ -41,10 +43,10 @@ export class GameScene extends Scene {
   // Item selection related properties
   availableItems!: ItemType[];
   playerItem: ItemType | null = null;
-  aiItem: ItemType | null = null;
+  aiItem!: ItemType | null;
   itemSelectionUI!: PIXI.Container;
   itemPlacementActive: boolean = false;
-  itemPlacementPreview: PIXI.Graphics | null = null;
+  itemPlacementPreview!: PIXI.Graphics | null;
   selectedPlatforms: Platform[] = [];
   selectedSpike?: Spike;
   flagPoint!: PIXI.Point;
@@ -264,7 +266,6 @@ export class GameScene extends Scene {
 
           const platform = colliders.find(body => this.platforms.some(p => p.body.id === body.id));
           const flag = colliders.find(body => body.id === this.flag?.body.id);
-          //console.log('hi', this.spikes)
           const spike = colliders.find(body => this.spikes.some(s => s.body.id === body.id));
 
           if (player && flag) {
@@ -282,7 +283,6 @@ export class GameScene extends Scene {
 
           if (player && platform && (pair.collision.normal.y === 0 ||
             player.position.y < platform.position.y)) {
-            console.log('player landing')
             this.player.land(pair.collision.normal);
             App.controllerInput.drop = false;
           }
@@ -384,7 +384,6 @@ export class GameScene extends Scene {
 
         console.log(!App.controllerInput.left, !App.controllerInput.right, this.player.canJump)
         if (!App.controllerInput.left && !App.controllerInput.right && this.player.canJump) {
-          console.log('jumping')
           Matter.Body.setVelocity(this.player.body, {
             x: 0,
             y: this.player.velocity.y
@@ -535,16 +534,10 @@ export class GameScene extends Scene {
    */
   selectAIItem() {
     this.gameStage = 0;
-    // Get player position
-    // const playerPosition = new PIXI.Point(
-    //   this.player.body.position.x / App.config.tileSize,
-    //   this.player.body.position.y / App.config.tileSize
-    // );
-
-    // TODO: change this to use the behavior tree
-    // this.aiItem = this.adversary.selectItem(this.availableItems, this.playerItem, playerPosition);
     console.log('Available items:', this.availableItems);
     this.aiItem = this.selectItemUsingBehaviorTree(this.availableItems);
+
+    console.log('AI selected', this.aiItem)
 
     // Create info text about AI's selection
     const aiSelectionText = new PIXI.Text({
@@ -831,13 +824,6 @@ export class GameScene extends Scene {
    * AI places its selected item
    */
   placeAIItem() {
-    if (!this.aiItem) return;
-
-
-    if (Math.random()) {
-      this.gameStage = 3;
-      return;
-    }
 
     // Show message about AI's action
     const aiActionText = new PIXI.Text({
@@ -854,26 +840,28 @@ export class GameScene extends Scene {
     this.container.addChild(aiActionText);
 
     // Determine where AI should place its item
-
-    // TODO: revamp determineItemPlacement
-    // const placementPosition = this.adversary.determineItemPlacement();
-    const placementPosition = new PIXI.Point(500, 500)
-    const gridX = Math.floor(placementPosition.x);
-    const gridY = Math.floor(placementPosition.y);
+    const {node, lastNode} = this.getItemPlacement();
+    const gridX = node.point.x
+    const gridY = node.point.y
 
     // Wait a bit for dramatic effect, then place the item
+    console.log('hi1')
     setTimeout(() => {
+      console.log('hi2')
       switch (this.aiItem) {
         case ItemType.Platform:
-          console.log("AI creating platform at", gridX, gridY);
+          const platformPoint = getVertex(lastNode.point.x, lastNode.point.y, node.point.x, node.point.y)
+          console.log("AI creating platform at", platformPoint.x, platformPoint.y);
           // TODO same as the player Platform, have this Platform type take in a W and a H
           const rectW = 3
           const rectH = 1
-          const rect = new PIXI.Rectangle(gridX, gridY, rectW, rectH);
+          const rect = new PIXI.Rectangle(platformPoint.x, platformPoint.y, rectW, rectH);
           const platform = new Platform(rect)
           this.addPlatform(platform)
           break;
         case ItemType.Bomb:
+          console.log("AI creating bomb at", gridX, gridY);
+
           // Find closest platform to the target position
           let closestPlatform = null;
           let minDistance = Infinity;
@@ -913,6 +901,7 @@ export class GameScene extends Scene {
           break;
       }
 
+      console.log('hi2')
       // Clean up and move to pathfinding phase
       this.container.removeChild(aiActionText);
       this.gameStage = 3;
@@ -920,5 +909,25 @@ export class GameScene extends Scene {
     }, 500);
   }
 
-}
+  getItemPlacement() {
+    const { path, pathWeights } = this.adversary.calculatePath(this.adversaryStart, this.flagPoint, this.levelPlan, false);
+    
+    // start at the first one??
+    let maxWeight = 0;
+    let maxPathNode = path[0]
+    let lastPathNode = path[0]
 
+    for (let i = 1; i < pathWeights.length-1; i++) {
+        const weight = pathWeights[i];
+        if (weight > maxWeight) {
+            if (i > 0) {
+                maxWeight = weight;
+                maxPathNode = path[i];
+                lastPathNode = path[i-1]
+            }
+        }
+    }
+
+    return {node: maxPathNode, lastNode: lastPathNode}
+  }
+}
