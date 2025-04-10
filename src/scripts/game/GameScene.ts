@@ -550,14 +550,14 @@ export class GameScene extends Scene {
       }
     });
     aiSelectionText.anchor.set(0.5);
-    aiSelectionText.position.set((window.innerWidth / 2) + 1000, window.innerHeight / 2 - 100);
+    aiSelectionText.position.set((window.innerWidth / 2), window.innerHeight / 2 - 100);
     this.container.addChild(aiSelectionText);
 
     // Display for 3 seconds then move to item placement phase
     setTimeout(() => {
       this.container.removeChild(aiSelectionText);
       this.gameStage = 2;
-    }, 500);
+    }, 3000);
   }
 
   /**
@@ -589,12 +589,16 @@ export class GameScene extends Scene {
     this.itemPlacementActive = true;
 
     // Remove any existing event listeners first to prevent duplicates
-    window.removeEventListener("mousemove", this.onItemPlacementMouseMove);
-    window.removeEventListener("click", this.onItemPlacementClick);
+    setTimeout(() => {
+      window.removeEventListener("mousemove", this.onItemPlacementMouseMove);
+      window.removeEventListener("click", this.onItemPlacementClick);
+    }, 1500);
 
     // Setup mouse move and click events
+    setTimeout(() => {
     window.addEventListener("mousemove", this.onItemPlacementMouseMove);
     window.addEventListener("click", this.onItemPlacementClick);
+    }, 1500);
 
     // Store references to event listeners
     this.placementText = placementText;
@@ -906,7 +910,7 @@ export class GameScene extends Scene {
       this.container.removeChild(aiActionText);
       this.gameStage = 3;
       console.log('moving game to stage 3, All placing should be complete and the game will start')
-    }, 500);
+    }, 1500);
   }
 
   getItemPlacement() {
