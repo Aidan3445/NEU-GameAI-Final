@@ -561,7 +561,6 @@ export class GameScene extends Scene {
     console.log('AI selected', this.aiItem)
     this.screenLog(3000, `AI selected: ${this.aiItem}, waiting 3 seconds...`)
     this.gameStage = 2;
-
   }
 
   /**
