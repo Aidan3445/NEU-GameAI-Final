@@ -50,7 +50,7 @@ export class UIPopup {
         align: "center",
       }
     });
-    this.headerText.position.set(300, 50);
+    this.headerText.position.set(300, 25);
     this.headerText.anchor.set(0.5, 0);
     this.container.addChild(this.headerText);
     return this.headerText;
@@ -133,6 +133,10 @@ export class UIPopup {
 
   hide() {
     this.container.visible = false;
+  }
+
+  show() {
+    this.container.visible = true;
   }
 }
 

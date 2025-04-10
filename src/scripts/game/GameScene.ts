@@ -462,8 +462,8 @@ The first to reach the flag wins!`);
     // move gameStage forward to AI picking
     if (this.gameStage === 1) {
       this.container.removeChild(this.itemSelectionUI!);
-      // selectAIItem will increase gameStage once the AI picks the item
       this.selectAIItem();
+      // selectAIItem will increase gameStage once the AI picks the item
       return;
     }
 
@@ -519,15 +519,26 @@ The first to reach the flag wins!`);
   }
 
   resetGame() {
-    let text;
     if (this.adversaryPoints > this.playerPoints) {
-      text = `adversary is winning! \n Adversary: ${this.adversaryPoints}\n Player: ${this.playerPoints}`;
+      this.UI.setBody(`Adversary is winning!
+Adversary: ${this.adversaryPoints}
+Player: ${this.playerPoints}`);
     } else if (this.adversaryPoints < this.playerPoints) {
-      text = `Player is winning! \n Adversary: ${this.adversaryPoints}\n Player: ${this.playerPoints}`;
+      this.UI.setBody(`Player is winning!
+Player: ${this.playerPoints}
+Adversary: ${this.adversaryPoints}`);
     } else {
-      text = `Player and adversary are tied! \n Adversary: ${this.adversaryPoints}\n Player: ${this.playerPoints}`;
+      this.UI.setBody(`Player and adversary are tied!
+Adversary: ${this.adversaryPoints}
+Player: ${this.playerPoints}`);
     }
-    this.screenLog(5000, text);
+
+    this.UI.setOkText("Play again");
+    this.UI.setOkAction(() => {
+      this.UI.hide();
+    });
+
+    this.UI.show();
 
     // Reset player position
     this.spawn();
@@ -604,7 +615,6 @@ The first to reach the flag wins!`);
     this.aiItem = this.selectItemUsingBehaviorTree(this.availableItems);
 
     console.log('AI selected', this.aiItem)
-    this.screenLog(3000, `AI selected: ${this.aiItem}, waiting 3 seconds...`)
     this.gameStage = 2;
   }
 
@@ -640,13 +650,13 @@ The first to reach the flag wins!`);
     setTimeout(() => {
       window.removeEventListener("mousemove", this.onItemPlacementMouseMove);
       window.removeEventListener("click", this.onItemPlacementClick);
-    }, 1500);
+    }, 100);
 
     // Setup mouse move and click events
     setTimeout(() => {
       window.addEventListener("mousemove", this.onItemPlacementMouseMove);
       window.addEventListener("click", this.onItemPlacementClick);
-    }, 1500);
+    }, 100);
 
     // Store references to event listeners
     this.placementText = placementText;
@@ -877,20 +887,6 @@ The first to reach the flag wins!`);
    */
   placeAIItem() {
 
-    // Show message about AI's action
-    const aiActionText = new PIXI.Text({
-      text: `AI is placing its ${this.aiItem}...`,
-      style: {
-        fontFamily: "Arial",
-        fontSize: 24,
-        fill: 0xffffff,
-        align: "center"
-      }
-    });
-    aiActionText.anchor.set(0.5);
-    aiActionText.position.set(window.innerWidth / 2, 50);
-    this.container.addChild(aiActionText);
-
     // Determine where AI should place its item
     const { node, lastNode } = this.getItemPlacement();
 
@@ -898,6 +894,31 @@ The first to reach the flag wins!`);
     if (!node) {
       this.aiItem = ItemType.Platform
     }
+
+    this.UI.setHeader(`AI selected: ${this.aiItem}
+Placed at: ${node.point.x}, ${node.point.y}
+
+`);
+    this.UI.setBody("Start in 3");
+    setTimeout(() => {
+      this.UI.setBody("Start in 2");
+
+      setTimeout(() => {
+        this.UI.setBody("Start in 1");
+        setTimeout(() => {
+          this.UI.setBody("Go!");
+
+          setTimeout(() => {
+            this.UI.hide();
+            this.gameStage = 3;
+          }, 250);
+        }, 1000);
+      });
+    }, 1000);
+
+    this.UI.show();
+
+
 
     // Wait a bit for dramatic effect, then place the item
     setTimeout(() => {
@@ -971,9 +992,6 @@ The first to reach the flag wins!`);
           break;
       }
 
-      // Clean up and move to pathfinding phase
-      this.container.removeChild(aiActionText);
-      this.gameStage = 3;
       console.log('moving game to stage 3, All placing should be complete and the game will start')
     }, 500);
 
