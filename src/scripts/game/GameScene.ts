@@ -17,6 +17,7 @@ import { GameLevel, level, oldTestLevel, rlevel, pathTest, vlevel } from './leve
 import { ItemSelector } from '../ai/ItemSelector';
 
 import { getVertex } from '../ai/ItemSelector';
+import { UIPopup } from './UIPopup';
 
 export class GameScene extends Scene {
   camera!: Camera;
@@ -55,6 +56,9 @@ export class GameScene extends Scene {
   flagPoint!: PIXI.Point;
   placementText: PIXI.Text | null = null;
 
+  // UI Popup
+  UI!: UIPopup;
+
   create() {
     this.levelPlan = GameLevel;
     const { playerStart, AIStart, platforms, spikes, levelRect, flagPoint } = buildLevel(this.levelPlan);
@@ -84,6 +88,7 @@ export class GameScene extends Scene {
 
     this.spawn();
 
+    this.createUI();
   }
 
   createCamera(levelRect: PIXI.Rectangle) {
@@ -111,6 +116,38 @@ export class GameScene extends Scene {
       this.container.addChild(s.container);
       s.container.zIndex = 50;
       return s;
+    });
+  }
+
+  createUI() {
+    this.gameStage = -1;
+    this.UI = new UIPopup();
+    this.container.addChild(this.UI.container);
+    this.UI.container.x = window.innerWidth / 2 - this.UI.container.width / 2;
+    this.UI.container.y = window.innerHeight / 2 - this.UI.container.height / 2;
+    this.UI.container.zIndex = 200;
+    this.UI.setHeader("Welcome to Ultimate Chicken Horse AI");
+    this.UI.setBody(`Ready to play?
+Use Arrow keys or WASD to move.
+Each round you and the AI will choose an item above,
+place it in the level and race to the end.
+The first to reach the flag wins!`);
+    this.UI.setOkText("Start");
+
+    this.UI.setOkAction(() => {
+      this.gameStage = 0;
+
+      this.UI.setHeader("Choose your item above!");
+      this.UI.setBody("Click on the item you want to use.");
+
+      this.UI.setOkText("OK");
+      this.UI.setOkAction(() => {
+        setTimeout(() => {
+          this.UI.setOkAction(() => {
+            this.UI.hide();
+          });
+        }, 500);
+      });
     });
   }
 
@@ -412,6 +449,7 @@ export class GameScene extends Scene {
   }
 
   update(dt: PIXI.Ticker) {
+    if (this.gameStage === -1) return;
     // console.log(this.itemSelectionUI)
 
     // this is the starting game stage, player has not chosen an item yet

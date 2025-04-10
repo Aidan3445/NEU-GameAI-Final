@@ -17,6 +17,7 @@ export class ItemButton {
     this.button.addChild(this.bg);
     this.bg.eventMode = 'static';
     this.bg.cursor = 'pointer';
+    this.button.zIndex = 1000;
 
     const itemNames = ["Platform", "Bomb", "Spikes"];
     const itemDescriptions = [

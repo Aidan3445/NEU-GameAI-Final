@@ -55,7 +55,7 @@ export class Platform {
         fontSize: 8,
         fill: 0xffffff,
       },
-      zIndex: 1000
+      zIndex: 700
     });
     cellDebugText.x = sprite.x + sprite.width / 2;
     cellDebugText.y = sprite.y + sprite.height / 2;
