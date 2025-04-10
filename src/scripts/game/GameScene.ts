@@ -13,7 +13,7 @@ import { ItemType } from '../ai/ItemSelector';
 
 import { Spike } from './Spike';
 import { ItemButton } from './ItemButton';
-import { GameLevel, level, oldTestLevel, rlevel, pathTest } from './levels';
+import { GameLevel, level, oldTestLevel, rlevel, pathTest, vlevel } from './levels';
 import { ItemSelector } from '../ai/ItemSelector';
 
 import { getVertex } from '../ai/ItemSelector';
@@ -53,7 +53,7 @@ export class GameScene extends Scene {
   placementText: PIXI.Text | null = null;
 
   create() {
-    this.levelPlan = GameLevel;
+    this.levelPlan = vlevel;
     const { playerStart, AIStart, platforms, spikes, levelRect, flagPoint } = buildLevel(this.levelPlan);
     getLevelNodes(this.levelPlan, true);
 
@@ -845,8 +845,11 @@ export class GameScene extends Scene {
 
     // Determine where AI should place its item
     const {node, lastNode} = this.getItemPlacement();
-    const gridX = node.point.x
-    const gridY = node.point.y
+
+    // there is no path, override and chose platform
+    if (!node) {
+      this.aiItem = ItemType.Platform
+    }
 
     // Wait a bit for dramatic effect, then place the item
     console.log('hi1')
@@ -854,7 +857,20 @@ export class GameScene extends Scene {
       console.log('hi2')
       switch (this.aiItem) {
         case ItemType.Platform:
-          const platformPoint = getVertex(lastNode.point.x, lastNode.point.y, node.point.x, node.point.y)
+            let platformPoint = new PIXI.Point(0,0)
+
+            if (!node) {
+            const possiblePoint = this.makePathToGoalPossible();
+            if (!possiblePoint) {
+              console.error("No valid platform point found");
+            } else {
+              platformPoint = possiblePoint;
+            }
+            
+          } else {
+            platformPoint = getVertex(lastNode.point.x, lastNode.point.y, node.point.x, node.point.y)
+          }
+          
           console.log("AI creating platform at", platformPoint.x, platformPoint.y);
           // TODO same as the player Platform, have this Platform type take in a W and a H
           const rectW = 3
@@ -864,6 +880,8 @@ export class GameScene extends Scene {
           this.addPlatform(platform)
           break;
         case ItemType.Bomb:
+          const gridX = node.point.x
+          const gridY = node.point.y
           console.log("AI creating bomb at", gridX, gridY);
 
           // Find closest platform to the target position
@@ -899,8 +917,10 @@ export class GameScene extends Scene {
           break;
 
         case ItemType.Spikes:
-          console.log("AI creating spikes at", gridX, gridY);
-          const spike = new Spike(new PIXI.Point(gridX, gridY));
+          const gridXSpike = node.point.x
+          const gridYSpike = node.point.y
+          console.log("AI creating spikes at", gridXSpike, gridYSpike);
+          const spike = new Spike(new PIXI.Point(gridXSpike, gridYSpike));
           this.addSpike(spike)
           break;
       }
@@ -933,5 +953,19 @@ export class GameScene extends Scene {
     }
 
     return {node: maxPathNode, lastNode: lastPathNode}
+  }
+
+  makePathToGoalPossible() {
+    const itemSelector = new ItemSelector(this.playerSpawn, [], this.adversary, this.platforms, this.levelPlan, this.adversaryStart, this.flagPoint);
+    
+    for (let y = 0; y < this.levelPlan.length; y++) {
+      for (let x = 0; x < this.levelPlan[y].length; x++) {
+        const platformPoint = new PIXI.Point(x, y)
+        if (itemSelector.checkPlatform(platformPoint)) {
+          return platformPoint
+        }
+      }
+    }
+    return null
   }
 }

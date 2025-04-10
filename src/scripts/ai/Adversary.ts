@@ -90,7 +90,6 @@ export class Adversary {
     this.path = path
 
     if (this.path.length === 0) {
-      console.error("No path found from", startKey, "to", targetKey);
       this.noPathFound();
       return { path: [], pathWeights: [] };
     }
@@ -177,7 +176,6 @@ export class Adversary {
       }
     }
 
-    console.error("No path found");
     return { path: [], pathWeights: [] };
   }
 

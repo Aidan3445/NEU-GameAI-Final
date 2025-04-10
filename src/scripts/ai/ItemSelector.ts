@@ -92,18 +92,14 @@ export class ItemSelector {
         return best.type;
     }
 
-    checkPlatform(node : Node, lastNode : Node) {
+    checkPlatform(platformPoint: PIXI.Point) {
         const levelPlanCopy = [...this.levelPlan]
-        const x = node.point.x
-        const y = node.point.y + 1
-
-        const platformPoint = getVertex(lastNode.point.x, lastNode.point.y, x, y)
 
         this.updateLevelPlan(platformPoint, "P", 3, levelPlanCopy)
 
-        const { path, pathWeights } = this.adversary.calculatePath(this.aiPos, this.flagPos, levelPlanCopy, false);
+        const { path, pathWeights } = this.adversary.calculatePath(this.aiPos, this.flagPos, levelPlanCopy, true);
         if (path.length===0) {
-            console.log('PATH IS EMPTY')
+            return null
         }
         const validWeights = pathWeights.filter(weight => !isNaN(weight));
         const sumPathWeights = validWeights.reduce((acc, weight) => acc + weight, 0);

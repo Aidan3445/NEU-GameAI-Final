@@ -153,3 +153,25 @@ export const GameLevel = [
   "                                               ",
   "                                               ",
 ];
+
+export const vlevel = [
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "                                   ",
+  "AX                                F",
+  "PP PPPPPPPPPPPPPPPPPPPP           P",
+  "                                   ",
+];
