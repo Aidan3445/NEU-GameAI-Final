@@ -889,14 +889,30 @@ Player: ${this.playerPoints}`);
 
     // Determine where AI should place its item
     const { node, lastNode } = this.getItemPlacement();
+    let gridX;
+    let gridY;
 
-    // there is no path, override and chose platform
     if (!node) {
       this.aiItem = ItemType.Platform
+      const possiblePoint = this.makePathToGoalPossible();
+      if (possiblePoint) {
+        gridX = possiblePoint.x;
+        gridY = possiblePoint.y;
+      } else {
+        gridX = this.flagPoint.x - 7;
+        gridY = this.flagPoint.y;
+      }
+      } else if (this.aiItem === ItemType.Platform) {
+        const platformPoint = getVertex(lastNode.point.x, lastNode.point.y, node.point.x, node.point.y)
+        gridX = platformPoint.x
+        gridY = platformPoint.y
+      } else {
+        gridX = node.point.x
+        gridY = node.point.y
     }
 
     this.UI.setHeader(`AI selected: ${this.aiItem}
-Placed at: ${node.point.x}, ${node.point.y}
+Placed at: ${gridX}, ${gridY}
 
 `);
     this.UI.setBody("Start in 3");
@@ -919,36 +935,19 @@ Placed at: ${node.point.x}, ${node.point.y}
     this.UI.show();
 
 
-
     // Wait a bit for dramatic effect, then place the item
     setTimeout(() => {
       switch (this.aiItem) {
         case ItemType.Platform:
-          let platformPoint = new PIXI.Point(this.flagPoint.x - 7, this.flagPoint.y)
-
-          if (!node) {
-            const possiblePoint = this.makePathToGoalPossible();
-            if (!possiblePoint) {
-              console.log("No valid path found, resetting game");
-            } else {
-              platformPoint = possiblePoint;
-            }
-
-          } else {
-            platformPoint = getVertex(lastNode.point.x, lastNode.point.y, node.point.x, node.point.y)
-          }
-
-          console.log("AI creating platform at", platformPoint.x, platformPoint.y);
+          console.log("AI creating platform at", gridX, gridY);
           // TODO same as the player Platform, have this Platform type take in a W and a H
           const rectW = 3
           const rectH = 1
-          const rect = new PIXI.Rectangle(platformPoint.x, platformPoint.y, rectW, rectH);
+          const rect = new PIXI.Rectangle(gridX, gridY, rectW, rectH);
           const platform = new Platform(rect)
           this.addPlatform(platform)
           break;
         case ItemType.Bomb:
-          const gridX = node.point.x
-          const gridY = node.point.y
           console.log("AI creating bomb at", gridX, gridY);
 
           // Find closest platform to the target position
@@ -984,10 +983,8 @@ Placed at: ${node.point.x}, ${node.point.y}
           break;
 
         case ItemType.Spikes:
-          const gridXSpike = node.point.x
-          const gridYSpike = node.point.y
-          console.log("AI creating spikes at", gridXSpike, gridYSpike);
-          const spike = new Spike(new PIXI.Point(gridXSpike, gridYSpike));
+          console.log("AI creating spikes at", gridX, gridY);
+          const spike = new Spike(new PIXI.Point(gridX, gridY));
           this.addSpike(spike)
           break;
       }
