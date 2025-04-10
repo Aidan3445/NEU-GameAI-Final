@@ -56,7 +56,7 @@ export class GameScene extends Scene {
   placementText: PIXI.Text | null = null;
 
   create() {
-    this.levelPlan = vlevel;
+    this.levelPlan = GameLevel;
     const { playerStart, AIStart, platforms, spikes, levelRect, flagPoint } = buildLevel(this.levelPlan);
     getLevelNodes(this.levelPlan, true);
 
@@ -223,6 +223,13 @@ export class GameScene extends Scene {
     App.controllerInput.right = false;
     App.controllerInput.jump = false;
     App.controllerInput.drop = false;
+
+    Matter.Body.setVelocity(this.player.body, {
+      x: 0,
+      y: 0
+    });
+
+    this.gameStage = 0;
   }
 
   // Enable player movement
@@ -304,7 +311,7 @@ export class GameScene extends Scene {
             // setTimeout(() => {
             //   this.resetGame();
             // }, 1000);
-            
+
           }
 
           if (adversary && platform && (pair.collision.normal.y === 0 ||
@@ -508,7 +515,7 @@ export class GameScene extends Scene {
   }
 
   randomizeItems() {
-    const {path} = this.adversary.calculatePath(this.adversaryStart, this.flagPoint, this.levelPlan, false)
+    const { path } = this.adversary.calculatePath(this.adversaryStart, this.flagPoint, this.levelPlan, false)
     if (path.length === 0) {
       console.log("No path found");
       return [ItemType.Platform, ItemType.Platform, ItemType.Bomb];
@@ -599,8 +606,8 @@ export class GameScene extends Scene {
 
     // Setup mouse move and click events
     setTimeout(() => {
-    window.addEventListener("mousemove", this.onItemPlacementMouseMove);
-    window.addEventListener("click", this.onItemPlacementClick);
+      window.addEventListener("mousemove", this.onItemPlacementMouseMove);
+      window.addEventListener("click", this.onItemPlacementClick);
     }, 1500);
 
     // Store references to event listeners
@@ -847,7 +854,7 @@ export class GameScene extends Scene {
     this.container.addChild(aiActionText);
 
     // Determine where AI should place its item
-    const {node, lastNode} = this.getItemPlacement();
+    const { node, lastNode } = this.getItemPlacement();
 
     // there is no path, override and chose platform
     if (!node) {
@@ -858,16 +865,16 @@ export class GameScene extends Scene {
     setTimeout(() => {
       switch (this.aiItem) {
         case ItemType.Platform:
-            let platformPoint = new PIXI.Point(this.flagPoint.x-7,this.flagPoint.y)
+          let platformPoint = new PIXI.Point(this.flagPoint.x - 7, this.flagPoint.y)
 
-            if (!node) {
+          if (!node) {
             const possiblePoint = this.makePathToGoalPossible();
             if (!possiblePoint) {
               console.log("No valid path found, resetting game");
             } else {
               platformPoint = possiblePoint;
             }
-            
+
           } else {
             platformPoint = getVertex(lastNode.point.x, lastNode.point.y, node.point.x, node.point.y)
           }
@@ -939,29 +946,29 @@ export class GameScene extends Scene {
 
   getItemPlacement() {
     const { path, pathWeights } = this.adversary.calculatePath(this.adversaryStart, this.flagPoint, this.levelPlan, false);
-    
+
     // start at the first one??
     let maxWeight = 0;
     let maxPathNode = path[0]
     let lastPathNode = path[0]
 
-    for (let i = 1; i < pathWeights.length-1; i++) {
-        const weight = pathWeights[i];
-        if (weight > maxWeight) {
-            if (i > 0) {
-                maxWeight = weight;
-                maxPathNode = path[i];
-                lastPathNode = path[i-1]
-            }
+    for (let i = 1; i < pathWeights.length - 1; i++) {
+      const weight = pathWeights[i];
+      if (weight > maxWeight) {
+        if (i > 0) {
+          maxWeight = weight;
+          maxPathNode = path[i];
+          lastPathNode = path[i - 1]
         }
+      }
     }
 
-    return {node: maxPathNode, lastNode: lastPathNode}
+    return { node: maxPathNode, lastNode: lastPathNode }
   }
 
   makePathToGoalPossible() {
     const itemSelector = new ItemSelector(this.playerSpawn, [], this.adversary, this.platforms, this.levelPlan, this.adversaryStart, this.flagPoint);
-    
+
     for (let y = 0; y < this.levelPlan.length; y++) {
       for (let x = 0; x < this.levelPlan[y].length; x++) {
         const platformPoint = new PIXI.Point(x, y)

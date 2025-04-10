@@ -149,7 +149,7 @@ export const GameLevel = [
   " PPPP          PPPPPP                 PPPPPP   ",
   "                                     PPPPPPP   ",
   "     X  A                           PPPPPPPP   ",
-  "    PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP   ",
+  "    PPPPPPPPP     PPPPPPPP      PPPPPPPPPPPP   ",
   "                                               ",
   "                                               ",
 ];

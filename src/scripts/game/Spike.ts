@@ -22,23 +22,24 @@ export class Spike {
     this.container = new PIXI.Container();
     this.gridPoint = point;
     this.createSprite(point);
-    this.createBody(point);
+    this.createBody();
   }
 
   createSprite(point: PIXI.Point) {
     this.sprite = App.sprite("spikes");
     this.sprite.setSize(App.config.tileSize);
     this.container.addChild(this.sprite);
-    this.sprite.position.x = point.x * App.config.tileSize;
-    this.sprite.position.y = point.y * App.config.tileSize;
+    this.sprite.anchor.set(0.5);
+    this.sprite.position.x = (point.x + 0.5) * App.config.tileSize;
+    this.sprite.position.y = (point.y + 0.5) * App.config.tileSize;
   }
 
-  createBody(point: PIXI.Point) {
+  createBody() {
     this.body = Matter.Bodies.rectangle(
-      point.x * App.config.tileSize,
-      point.y * App.config.tileSize,
-      App.config.tileSize,
-      App.config.tileSize,
+      this.sprite.x,
+      this.sprite.y,
+      this.sprite.width,
+      this.sprite.height,
       {
         isStatic: true,
         isSensor: true,
