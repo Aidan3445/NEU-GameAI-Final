@@ -226,7 +226,6 @@ The first to reach the flag wins!`);
   }
 
   updateLevelPlan(cell: PIXI.Point, newChar: string, length: number) {
-    // console.log('updating level plan', cell, newChar, length, this.levelPlan);
     this.levelPlan[cell.y] = this.levelPlan[cell.y].substring(0, cell.x) +
       newChar.repeat(length) +
       this.levelPlan[cell.y].substring(cell.x + length);
@@ -321,6 +320,9 @@ The first to reach the flag wins!`);
 
           if (player && flag) {
             console.log("Player won!");
+
+            this.UI.setHeader("You won!");
+
             this.playerPoints += 1;
             this.disablePlayerMovement();
             this.resetGame()
@@ -342,6 +344,9 @@ The first to reach the flag wins!`);
 
           if (adversary && flag) {
             console.log("Adversary won!");
+
+            this.UI.setHeader("The AI won!");
+
             this.adversaryPoints += 1;
             this.disablePlayerMovement();
             this.resetGame()
@@ -360,6 +365,8 @@ The first to reach the flag wins!`);
             // somehow lag player behind
             console.log("AI won, player died");
             this.disablePlayerMovement();
+
+            this.UI.setHeader("You died!");
 
             setTimeout(() => {
               this.resetGame();
@@ -650,13 +657,13 @@ Player: ${this.playerPoints}`);
     setTimeout(() => {
       window.removeEventListener("mousemove", this.onItemPlacementMouseMove);
       window.removeEventListener("click", this.onItemPlacementClick);
-    }, 100);
+    }, 500);
 
     // Setup mouse move and click events
     setTimeout(() => {
       window.addEventListener("mousemove", this.onItemPlacementMouseMove);
       window.addEventListener("click", this.onItemPlacementClick);
-    }, 100);
+    }, 500);
 
     // Store references to event listeners
     this.placementText = placementText;
