@@ -902,6 +902,8 @@ Player: ${this.playerPoints}`);
       this.aiItem = ItemType.Platform
     }
 
+    this.UI.setOkAction(() => { });
+
     this.UI.setHeader(`AI selected: ${this.aiItem}
 Placed at: ${node.point.x}, ${node.point.y}`);
     this.UI.setBody("Start in 3");
